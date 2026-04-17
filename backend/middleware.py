@@ -1,7 +1,11 @@
 """JWT auth middleware for FastAPI"""
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from auth import decode_access_token
+
+try:
+    from .auth import decode_access_token
+except ImportError:
+    from auth import decode_access_token
 
 security = HTTPBearer()
 

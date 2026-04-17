@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const token = JSON.parse(localStorage.getItem('acvis-auth-storage') || '{}')?.state?.token;
@@ -8,7 +8,8 @@ async function request(endpoint: string, options: RequestInit = {}) {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const res = await fetch(`${API_BASE}${normalizedEndpoint}`, { ...options, headers });
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(data?.detail || `Request failed: ${res.status}`);
   return data;

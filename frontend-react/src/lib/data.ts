@@ -166,6 +166,7 @@ export const SAMPLE_COMPETITOR_REVIEWS: Review[] = [
 // ─── Types ───
 export interface Review {
   review_id: string;
+  user_id?: string;
   text: string;
   rating: number | null;
   timestamp: string;

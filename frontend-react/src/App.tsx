@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import AppLayout from '@/components/layout/AppLayout';
@@ -24,7 +25,7 @@ import SubmitReview from '@/pages/user/SubmitReview';
 import MyReviews from '@/pages/user/MyReviews';
 import ProductInsights from '@/pages/user/ProductInsights';
 
-function ProtectedRoute({ children, allowedRole }: { children: JSX.Element, allowedRole: string }) {
+function ProtectedRoute({ children, allowedRole }: { children: ReactElement, allowedRole: string }) {
   const { token, role } = useAuthStore();
   const location = useLocation();
 

@@ -1,13 +1,21 @@
 from fastapi import APIRouter, HTTPException, Depends
-from models import ReviewInput, UserCreate, UserLogin, UserResponse, Token
-from pipeline import run_pipeline
-from database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs
-from auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from middleware import get_current_user, require_company
 from datetime import timedelta
 import logging
 import csv
 import os
+
+try:
+    from .models import ReviewInput, UserCreate, UserLogin, UserResponse, Token
+    from .pipeline import run_pipeline
+    from .database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs
+    from .auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+    from .middleware import get_current_user, require_company
+except ImportError:
+    from models import ReviewInput, UserCreate, UserLogin, UserResponse, Token
+    from pipeline import run_pipeline
+    from database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs
+    from auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+    from middleware import get_current_user, require_company
 
 logger = logging.getLogger("acvis.routes")
 router = APIRouter()
@@ -137,7 +145,7 @@ async def get_stats(user=Depends(get_current_user)):
 
 @router.get("/api/auth/me")
 async def get_me(user=Depends(get_current_user)):
-    db_user = users.find_one({"email": user["sub"]}, {"_id": 0, "hashed_password": 0})
+    db_user = users.find_one({"email": user["email"]}, {"_id": 0, "hashed_password": 0})
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"email": db_user["email"], "role": db_user["role"]}

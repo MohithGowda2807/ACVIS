@@ -1,10 +1,11 @@
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
+from pathlib import Path
 import os
 import sys
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().with_name(".env"))
 
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:

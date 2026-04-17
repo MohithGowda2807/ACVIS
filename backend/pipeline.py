@@ -1,13 +1,22 @@
 """
 ACVIS Pipeline — Full NLP processing with MongoDB persistence at every stage
 """
-from database import raw_reviews, processed_reviews, ai_outputs, insights, actions_col
-from nlp_engine import (
-    ingest_reviews, preprocess_all, analyze_all,
-    aggregate_feature_sentiment, aggregate_trends, detect_spikes,
-    identify_root_causes, aggregate_emotions, compute_predictions,
-    generate_decisions, calculate_revenue_impact,
-)
+try:
+    from .database import raw_reviews, processed_reviews, ai_outputs, insights, actions_col
+    from .nlp_engine import (
+        ingest_reviews, preprocess_all, analyze_all,
+        aggregate_feature_sentiment, aggregate_trends, detect_spikes,
+        identify_root_causes, aggregate_emotions, compute_predictions,
+        generate_decisions, calculate_revenue_impact,
+    )
+except ImportError:
+    from database import raw_reviews, processed_reviews, ai_outputs, insights, actions_col
+    from nlp_engine import (
+        ingest_reviews, preprocess_all, analyze_all,
+        aggregate_feature_sentiment, aggregate_trends, detect_spikes,
+        identify_root_causes, aggregate_emotions, compute_predictions,
+        generate_decisions, calculate_revenue_impact,
+    )
 import logging
 
 logger = logging.getLogger("acvis.pipeline")
