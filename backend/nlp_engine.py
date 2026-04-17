@@ -33,6 +33,7 @@ ASPECT_ALIASES = {
     "support": ["support", "service", "warranty", "customer care", "helpline"],
     "heating": ["heat", "hot", "warm", "thermal", "overheat", "temperature"],
     "fingerprint": ["fingerprint", "face unlock", "biometric", "face id", "sensor"],
+    "delivery": ["delivery", "shipping", "arrived", "package", "courier", "shipped", "dispatch", "packaging"],
     "general": ["phone", "device", "product", "mobile", "handset"],
 }
 

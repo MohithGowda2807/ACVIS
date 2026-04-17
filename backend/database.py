@@ -1,10 +1,11 @@
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
+from pathlib import Path
 import os
 import sys
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().with_name(".env"))
 
 MONGO_URI = os.getenv("MONGO_URI")
 
@@ -149,6 +150,7 @@ ai_outputs = db["ai_outputs"]
 insights = db["insights"]
 actions_col = db["actions"]
 users = db["users"]
+tickets = db["tickets"]
 
 # Indexes (no-op for in-memory, lazy for Mongo)
 try:
@@ -156,6 +158,8 @@ try:
     processed_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
     ai_outputs.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
     users.create_index([("email", ASCENDING)], unique=True)
+    tickets.create_index([("ticket_id", ASCENDING)], unique=True)
+    tickets.create_index([("user_email", ASCENDING)])
 except Exception as e:
     print(f"[WARNING] Index creation deferred: {e}")
 

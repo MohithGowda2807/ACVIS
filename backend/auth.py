@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 import jwt
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().with_name(".env"))
 
 SECRET_KEY = os.getenv("JWT_SECRET", "supersecretkey_change_me_in_prod")
 ALGORITHM = "HS256"

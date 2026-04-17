@@ -90,7 +90,7 @@ export default function Analyze() {
           )}
           {tab === 'Sample Data' && (
             <div>
-              <p className="text-sm text-gray-500 mb-4">Load the Amazon Kaggle dataset to test the pipeline.</p>
+              <p className="text-sm text-gray-500 mb-4">Load the Amazon Reviews 2023 dataset (Electronics) to test the full pipeline.</p>
               <div className="flex gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -98,7 +98,7 @@ export default function Analyze() {
                   disabled={isProcessing}
                   className="flex items-center gap-2 px-4 py-2.5 bg-amazon-yellow hover:bg-amazon-orange rounded-lg text-sm font-medium text-gray-900 transition disabled:opacity-50"
                 >
-                  <Database className="w-4 h-4" /> Analyze Kaggle Dataset
+                  <Database className="w-4 h-4" /> Analyze Amazon Reviews
                 </motion.button>
               </div>
             </div>

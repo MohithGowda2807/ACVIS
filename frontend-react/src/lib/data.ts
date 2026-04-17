@@ -16,6 +16,7 @@ export const ASPECT_ALIASES: Record<string, string[]> = {
   support: ['support', 'service', 'warranty', 'customer care', 'helpline'],
   heating: ['heat', 'hot', 'warm', 'thermal', 'overheat', 'temperature'],
   fingerprint: ['fingerprint', 'face unlock', 'biometric', 'face id', 'sensor'],
+  delivery: ['delivery', 'shipping', 'arrived', 'package', 'courier', 'shipped', 'dispatch', 'packaging'],
   general: ['phone', 'device', 'product', 'mobile', 'handset']
 };
 
@@ -166,6 +167,7 @@ export const SAMPLE_COMPETITOR_REVIEWS: Review[] = [
 // ─── Types ───
 export interface Review {
   review_id: string;
+  user_id?: string;
   text: string;
   rating: number | null;
   timestamp: string;

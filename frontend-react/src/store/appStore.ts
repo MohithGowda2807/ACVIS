@@ -44,7 +44,7 @@ interface AppState {
   userReviews: Review[];
 
   // Actions
-  runPipeline: (reviews: Review[], isCompetitor?: boolean) => Promise<void>;
+  runPipeline: (reviews: Review[], isCompetitor?: boolean, useCsv?: boolean) => Promise<void>;
   runSamplePipeline: () => Promise<void>;
   runCompetitorPipeline: () => Promise<void>;
   submitUserReview: (text: string, rating: number, source: string) => void;
@@ -79,14 +79,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   ...initialState,
   portal: 'company',
 
-  runPipeline: async (reviews: Review[], isCompetitor = false) => {
+  runPipeline: async (reviews: Review[], isCompetitor = false, useCsv = false) => {
     if (get().isProcessing) return;
     set({ isProcessing: true, pipelineStep: 0, pipelineLabel: 'Sending to backend...' });
 
     try {
       // Try backend first
       set({ pipelineStep: 1, pipelineLabel: 'Backend NLP processing...' });
-      const result = await api.analyze(reviews);
+      const result = await api.analyze(reviews, useCsv);
 
       if (result && result.status === 'success') {
         set({ pipelineStep: 3, pipelineLabel: 'Processing results...' });
@@ -103,7 +103,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         } : initialState.revenueImpact;
 
         const stateUpdate: any = {
-          rawReviews: reviews,
+          rawReviews: result.raw_reviews || reviews,
           featureSentiment: result.feature_sentiment || {},
           predictions: result.predictions || initialState.predictions,
           trends: result.trends || {},
@@ -168,12 +168,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   runSamplePipeline: async () => {
     if (get().isProcessing) return;
-    set({ isProcessing: true, pipelineStep: 0, pipelineLabel: 'Loading sample data...' });
+    set({ isProcessing: true, pipelineStep: 0, pipelineLabel: 'Loading Amazon Reviews dataset...' });
 
-    // Try backend with sample reviews
+    // Try backend with CSV
     try {
-      set({ pipelineStep: 1, pipelineLabel: 'Sending sample reviews to backend...' });
-      const result = await api.analyze(SAMPLE_REVIEWS);
+      set({ pipelineStep: 1, pipelineLabel: 'Sending analyze request to backend...' });
+      const result = await api.analyze([], true);
 
       if (result && result.status === 'success') {
         set({ pipelineStep: 3, pipelineLabel: 'Processing results...' });
@@ -189,7 +189,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         } : initialState.revenueImpact;
 
         set({
-          rawReviews: SAMPLE_REVIEWS,
+          rawReviews: result.raw_reviews || [],
           featureSentiment: result.feature_sentiment || {},
           predictions: result.predictions || initialState.predictions,
           trends: result.trends || {},
@@ -239,7 +239,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   runCompetitorPipeline: async () => {
-    await get().runPipeline([...SAMPLE_COMPETITOR_REVIEWS], true);
+    await get().runPipeline([], true, true);
   },
 
   loadFromBackend: async () => {

@@ -28,7 +28,8 @@ class Review(BaseModel):
     source: Optional[str] = "unknown"
 
 class ReviewInput(BaseModel):
-    reviews: List[Review]
+    reviews: Optional[List[Review]] = None
+    use_csv: Optional[bool] = False
 
 # ─── Pipeline Output Models ───
 class ProcessedReview(BaseModel):
@@ -84,3 +85,23 @@ class PipelineResponse(BaseModel):
     root_causes: Dict[str, Any]
     emotions: Dict[str, int]
     revenue_impact: Dict[str, Any]
+
+# ─── Ticket Models ───
+class TicketCreate(BaseModel):
+    subject: str
+    description: str
+    category: Optional[str] = "General"
+
+class TicketUpdate(BaseModel):
+    resolution_note: Optional[str] = ""
+
+class TicketResponse(BaseModel):
+    ticket_id: str
+    subject: str
+    description: str
+    category: str
+    status: str  # "open" | "resolved"
+    user_email: str
+    created_at: str
+    resolved_at: Optional[str] = None
+    resolution_note: Optional[str] = None
