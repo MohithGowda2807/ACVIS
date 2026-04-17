@@ -1,5 +1,10 @@
 fastapi
-uvicorn
-pymongo
+uvicorn[standard]
+pymongo[srv]
 python-dotenv
 openai
+bcrypt
+pyjwt
+langdetect
+dnspython
+python-multipart

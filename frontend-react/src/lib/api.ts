@@ -1,0 +1,36 @@
+const API_BASE = '/api';
+
+async function request(endpoint: string, options: RequestInit = {}) {
+  const token = JSON.parse(localStorage.getItem('acvis-auth-storage') || '{}')?.state?.token;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.detail || `Request failed: ${res.status}`);
+  return data;
+}
+
+export const api = {
+  register: (email: string, password: string, role: string) =>
+    request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, role }) }),
+
+  login: (email: string, password: string) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+
+  analyze: (reviews: any[]) =>
+    request('/analyze', { method: 'POST', body: JSON.stringify({ reviews }) }),
+
+  getInsights: () => request('/insights'),
+  getFeatures: () => request('/features'),
+  getAlerts: () => request('/alerts'),
+  getActions: () => request('/actions'),
+  getTrends: () => request('/trends'),
+  getRevenue: () => request('/revenue'),
+  getStats: () => request('/stats'),
+  getHealth: () => request('/health'),
+  getMe: () => request('/auth/me'),
+};

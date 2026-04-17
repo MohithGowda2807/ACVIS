@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, 'Amazon Ember', sans-serif;
+    background-color: #eaeded;
+    color: #0f1111;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: #007185; text-decoration: none; }
+  a:hover { color: #c45500; text-decoration: underline; }
+}
+
+@layer components {
+  .btn-amazon {
+    @apply px-4 py-2 bg-gradient-to-b from-amazon-yellow to-amazon-yellowHover text-sm rounded-lg border border-yellow-500 cursor-pointer font-sans shadow-sm;
+  }
+  .btn-amazon:hover {
+    @apply from-amazon-yellowHover to-amazon-yellowHover;
+  }
+  .btn-amazon-primary {
+    @apply px-6 py-2.5 bg-amazon-orange text-white text-sm font-bold rounded-lg border-none cursor-pointer;
+  }
+  .btn-amazon-primary:hover {
+    @apply bg-amazon-orangeHover;
+  }
+  .amazon-card {
+    @apply bg-white rounded-lg p-4 shadow-amazon;
+  }
+  .amazon-card:hover {
+    @apply shadow-amazon-lg;
+  }
+  .amazon-star {
+    color: #ffa41c;
+  }
+  .amazon-link {
+    @apply text-amazon-link cursor-pointer;
+  }
+  .amazon-link:hover {
+    @apply text-amazon-warning underline;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
