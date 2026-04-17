@@ -129,4 +129,5 @@ def run_pipeline(reviews_data: list) -> dict:
         "root_causes": root_causes,
         "emotions": emotions,
         "revenue_impact": revenue_impact,
+        "raw_reviews": raw,
     }

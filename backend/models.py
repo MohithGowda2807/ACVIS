@@ -28,7 +28,8 @@ class Review(BaseModel):
     source: Optional[str] = "unknown"
 
 class ReviewInput(BaseModel):
-    reviews: List[Review]
+    reviews: Optional[List[Review]] = None
+    use_csv: Optional[bool] = False
 
 # ─── Pipeline Output Models ───
 class ProcessedReview(BaseModel):

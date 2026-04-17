@@ -6,6 +6,8 @@ from auth import get_password_hash, verify_password, create_access_token, ACCESS
 from middleware import get_current_user, require_company
 from datetime import timedelta
 import logging
+import csv
+import os
 
 logger = logging.getLogger("acvis.routes")
 router = APIRouter()
@@ -45,7 +47,39 @@ async def login(user: UserLogin):
 @router.post("/api/analyze")
 async def analyze(data: ReviewInput, user=Depends(get_current_user)):
     try:
-        result = run_pipeline(data.reviews)
+        reviews_to_process = data.reviews or []
+        if data.use_csv:
+            csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "7817_1.csv")
+            if not os.path.exists(csv_path):
+                raise Exception("CSV dataset not found at " + csv_path)
+            
+            import uuid
+            csv_reviews = []
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                count = 0
+                for row in reader:
+                    text = row.get("reviews.text")
+                    if text:
+                        rating = None
+                        try:
+                            rating = float(row.get("reviews.rating", 0))
+                        except Exception:
+                            pass
+                        
+                        csv_reviews.append({
+                            "review_id": row.get("id") or str(uuid.uuid4()),
+                            "text": text,
+                            "rating": rating,
+                            "timestamp": row.get("reviews.date"),
+                            "source": "amazon_kaggle"
+                        })
+                        count += 1
+                        if count >= 300:  # limited to 300 for decent speed while getting good data distribution.
+                            break
+            reviews_to_process = csv_reviews
+
+        result = run_pipeline(reviews_to_process)
         return result
     except Exception as e:
         logger.error(f"Pipeline error: {e}")
