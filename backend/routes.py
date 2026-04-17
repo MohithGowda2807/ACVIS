@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
-import csv
+import json
 import os
 
 try:
@@ -52,40 +52,74 @@ async def login(user: UserLogin):
 
 
 # ─── Pipeline ───
+def _load_amazon_reviews(limit: int = 500) -> list:
+    """Load reviews from Amazon Reviews 2023 sample JSON."""
+    import uuid
+
+    # Try Amazon Reviews 2023 sample first
+    json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "amazon_reviews_sample.json")
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        reviews = []
+        for item in data[:limit]:
+            text = item.get("text", "").strip()
+            if not text:
+                continue
+
+            # Convert HuggingFace Amazon Reviews 2023 schema to ACVIS schema
+            ts = item.get("timestamp")
+            if isinstance(ts, (int, float)):
+                # Millisecond epoch -> ISO format
+                ts = datetime.utcfromtimestamp(ts / 1000).isoformat()
+
+            reviews.append({
+                "review_id": item.get("user_id", str(uuid.uuid4())),
+                "text": text,
+                "rating": item.get("rating"),
+                "timestamp": ts,
+                "source": "amazon",
+            })
+        return reviews
+
+    # Fallback: try old CSV
+    csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "7817_1.csv")
+    if os.path.exists(csv_path):
+        import csv
+        csv_reviews = []
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            count = 0
+            for row in reader:
+                text = row.get("reviews.text")
+                if text:
+                    rating = None
+                    try:
+                        rating = float(row.get("reviews.rating", 0))
+                    except Exception:
+                        pass
+                    csv_reviews.append({
+                        "review_id": row.get("id") or str(uuid.uuid4()),
+                        "text": text,
+                        "rating": rating,
+                        "timestamp": row.get("reviews.date"),
+                        "source": "amazon_kaggle",
+                    })
+                    count += 1
+                    if count >= limit:
+                        break
+        return csv_reviews
+
+    raise Exception("No dataset found. Run: python backend/amazon_sample_generator.py")
+
+
 @router.post("/api/analyze")
 async def analyze(data: ReviewInput, user=Depends(get_current_user)):
     try:
         reviews_to_process = data.reviews or []
         if data.use_csv:
-            csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "7817_1.csv")
-            if not os.path.exists(csv_path):
-                raise Exception("CSV dataset not found at " + csv_path)
-            
-            import uuid
-            csv_reviews = []
-            with open(csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                count = 0
-                for row in reader:
-                    text = row.get("reviews.text")
-                    if text:
-                        rating = None
-                        try:
-                            rating = float(row.get("reviews.rating", 0))
-                        except Exception:
-                            pass
-                        
-                        csv_reviews.append({
-                            "review_id": row.get("id") or str(uuid.uuid4()),
-                            "text": text,
-                            "rating": rating,
-                            "timestamp": row.get("reviews.date"),
-                            "source": "amazon_kaggle"
-                        })
-                        count += 1
-                        if count >= 300:  # limited to 300 for decent speed while getting good data distribution.
-                            break
-            reviews_to_process = csv_reviews
+            reviews_to_process = _load_amazon_reviews(500)
 
         result = run_pipeline(reviews_to_process)
         return result

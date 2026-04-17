@@ -168,7 +168,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   runSamplePipeline: async () => {
     if (get().isProcessing) return;
-    set({ isProcessing: true, pipelineStep: 0, pipelineLabel: 'Loading CSV data...' });
+    set({ isProcessing: true, pipelineStep: 0, pipelineLabel: 'Loading Amazon Reviews dataset...' });
 
     // Try backend with CSV
     try {

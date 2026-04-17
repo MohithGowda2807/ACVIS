@@ -25,11 +25,11 @@ logger = logging.getLogger("acvis.pipeline")
 def run_pipeline(reviews_data: list) -> dict:
     """
     Execute full ACVIS pipeline:
-    1. Ingest → raw_reviews
-    2. Preprocess → processed_reviews
-    3. NLP Analyze → ai_outputs
-    4. Aggregate → insights
-    5. Decisions → actions
+    1. Ingest -> raw_reviews
+    2. Preprocess -> processed_reviews
+    3. NLP Analyze -> ai_outputs
+    4. Aggregate -> insights
+    5. Decisions -> actions
     """
     # Convert Pydantic models to dicts if needed
     reviews_list = []
@@ -43,7 +43,7 @@ def run_pipeline(reviews_data: list) -> dict:
         else:
             reviews_list.append({"text": str(r)})
 
-    # ─── Stage 1: Ingestion ───
+    # --- Stage 1: Ingestion ---
     logger.info("Stage 1: Ingesting reviews...")
     raw = ingest_reviews(reviews_list)
     for doc in raw:
@@ -55,9 +55,9 @@ def run_pipeline(reviews_data: list) -> dict:
             )
         except Exception as e:
             logger.warning(f"Failed to store raw review: {e}")
-    logger.info(f"  → {len(raw)} reviews ingested")
+    logger.info(f"  -> {len(raw)} reviews ingested")
 
-    # ─── Stage 2: Preprocessing ───
+    # --- Stage 2: Preprocessing ---
     logger.info("Stage 2: Preprocessing...")
     processed = preprocess_all(raw)
     for doc in processed:
@@ -69,9 +69,9 @@ def run_pipeline(reviews_data: list) -> dict:
             )
         except Exception as e:
             logger.warning(f"Failed to store processed review: {e}")
-    logger.info(f"  → {len(processed)} reviews preprocessed")
+    logger.info(f"  -> {len(processed)} reviews preprocessed")
 
-    # ─── Stage 3: NLP Analysis ───
+    # --- Stage 3: NLP Analysis ---
     logger.info("Stage 3: Running NLP analysis...")
     ai_results = analyze_all(processed)
     for doc in ai_results:
@@ -83,9 +83,9 @@ def run_pipeline(reviews_data: list) -> dict:
             )
         except Exception as e:
             logger.warning(f"Failed to store AI output: {e}")
-    logger.info(f"  → {len(ai_results)} reviews analyzed")
+    logger.info(f"  -> {len(ai_results)} reviews analyzed")
 
-    # ─── Stage 4: Insights ───
+    # --- Stage 4: Insights ---
     logger.info("Stage 4: Generating insights...")
     feature_sentiment = aggregate_feature_sentiment(ai_results)
     trends = aggregate_trends(ai_results)
@@ -109,7 +109,7 @@ def run_pipeline(reviews_data: list) -> dict:
     except Exception as e:
         logger.warning(f"Failed to store insights: {e}")
 
-    # ─── Stage 5: Decisions ───
+    # --- Stage 5: Decisions ---
     logger.info("Stage 5: Generating decisions...")
     decisions = generate_decisions(feature_sentiment, trend_alerts, root_causes, predictions)
     revenue_impact = calculate_revenue_impact(predictions, feature_sentiment, trend_alerts)
@@ -125,7 +125,7 @@ def run_pipeline(reviews_data: list) -> dict:
     except Exception as e:
         logger.warning(f"Failed to store actions: {e}")
 
-    logger.info("✅ Pipeline complete!")
+    logger.info("[OK] Pipeline complete!")
 
     return {
         "status": "success",
@@ -135,6 +135,7 @@ def run_pipeline(reviews_data: list) -> dict:
         "alerts": decisions["alerts"],
         "actions": decisions["actions"],
         "trends": trends,
+        "trend_alerts": trend_alerts,
         "root_causes": root_causes,
         "emotions": emotions,
         "revenue_impact": revenue_impact,
