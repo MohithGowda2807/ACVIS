@@ -21,8 +21,8 @@ export const api = {
   login: (email: string, password: string) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
 
-  analyze: (reviews: any[]) =>
-    request('/analyze', { method: 'POST', body: JSON.stringify({ reviews }) }),
+  analyze: (reviews: any[], use_csv?: boolean) =>
+    request('/analyze', { method: 'POST', body: JSON.stringify({ reviews, use_csv: use_csv || false }) }),
 
   getInsights: () => request('/insights'),
   getFeatures: () => request('/features'),
