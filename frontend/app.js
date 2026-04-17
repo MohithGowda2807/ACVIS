@@ -6,7 +6,7 @@
 import {
   KNOWN_ASPECTS, ASPECT_ALIASES, POSITIVE_WORDS, NEGATIVE_WORDS,
   SARCASM_PATTERNS, CONTRACTIONS, SLANG_MAP, EMOTION_KEYWORDS,
-  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS,
+  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS, BUSINESS_CONFIG,
   FEATURE_ICONS, PRIORITY_CONFIG
 } from './data.js';
 
@@ -23,6 +23,14 @@ let appState = {
   actions: [],
   alerts: [],
   predictions: {},
+  revenueImpact: {
+    loss: 0,
+    churnIncrease: 0,
+    topLiability: "--",
+    recovery: 0,
+    currentRating: 0,
+    predictedRating: 0
+  },
   isProcessing: false
 };
 
@@ -545,6 +553,8 @@ async function runPipeline(rawData) {
     appState.rootCauses = detectRootCauses(appState.aiOutputs);
     appState.emotions = aggregateEmotions(appState.aiOutputs);
     appState.predictions = generatePredictions(appState.aiOutputs);
+    appState.revenueImpact = calculateRevenueImpact(appState.predictions, appState.featureSentiment, appState.trendAlerts);
+
 
     const featuresDetected = Object.keys(appState.featureSentiment).filter(f => f !== 'general').length;
     updateStat('stat-features', featuresDetected);
@@ -586,6 +596,7 @@ function renderDashboard() {
   dashboard.classList.add('visible');
   dashboard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  renderRevenueImpact();
   renderFeatureSentiment();
   renderDonutCharts();
   renderTrendChart();
@@ -1152,7 +1163,12 @@ function initApp() {
       rawReviews: [], processedReviews: [], aiOutputs: [],
       featureSentiment: {}, trends: {}, trendAlerts: {},
       rootCauses: {}, emotions: {}, actions: [], alerts: [],
-      predictions: {}, isProcessing: false
+      predictions: {}, 
+      revenueImpact: {
+        loss: 0, churnIncrease: 0, topLiability: "--",
+        recovery: 0, currentRating: 0, predictedRating: 0
+      },
+      isProcessing: false
     };
     ['stat-raw', 'stat-processed', 'stat-features', 'stat-alerts', 'stat-actions'].forEach(id => {
       const el = document.getElementById(id);
@@ -1170,6 +1186,82 @@ function initApp() {
       if (appState.aiOutputs.length > 0) renderTrendChart();
     }, 250);
   });
+}
+
+// ============================================================
+// 7. REVENUE IMPACT LOGIC
+// ============================================================
+function calculateRevenueImpact(predictions, featureSentiment, trendAlerts) {
+  const cfg = BUSINESS_CONFIG;
+  const currentRating = predictions.current || 4.2; // Use actual avg or fall back to high baseline
+  const predictedRating = predictions.predicted || currentRating;
+
+  const ratingDelta = Math.max(0, currentRating - predictedRating);
+  
+  // Logic: Churn % increase = (Rating Drop) * Churn Per Rating Drop
+  const churnIncrease = ratingDelta * cfg.churn_per_rating_drop;
+  
+  // Monthly Revenue = Users * ARPU
+  const totalMonthlyRevenue = cfg.total_users * cfg.arpu_monthly;
+  
+  // Revenue Loss = Total Revenue * Churn Increase
+  const monthlyLoss = totalMonthlyRevenue * churnIncrease;
+  
+  // Identifying Top Liability (Feature with most negative sentiment + spike)
+  let topLiability = "--";
+  let maxNegImpact = -1;
+
+  for (const [feature, stats] of Object.entries(featureSentiment)) {
+    if (feature === 'general') continue;
+    
+    // Impact score = (negative ratio) * (total reviews) * (1.5 if spike detected)
+    let impactScore = stats.negative * stats.total;
+    if (trendAlerts[feature]) impactScore *= 1.5;
+
+    if (impactScore > maxNegImpact) {
+      maxNegImpact = impactScore;
+      topLiability = feature;
+    }
+  }
+
+  const liabilityExposure = monthlyLoss * (maxNegImpact > 0 ? 0.6 : 0); // Est. 60% of loss attributed to top feature
+
+  return {
+    loss: monthlyLoss / cfg.currency_multiplier, // Convert to Cr
+    churnIncrease: churnIncrease * 100, // Convert to %
+    topLiability,
+    exposure: liabilityExposure / cfg.currency_multiplier,
+    recovery: monthlyLoss / cfg.currency_multiplier,
+    currentRating,
+    predictedRating
+  };
+}
+
+function renderRevenueImpact() {
+  const rev = appState.revenueImpact;
+  const cfg = BUSINESS_CONFIG;
+
+  const elLoss = document.getElementById('est-revenue-loss');
+  const elLossSub = document.getElementById('revenue-loss-sub');
+  const elChurn = document.getElementById('est-churn-increase');
+  const elChurnBar = document.getElementById('churn-progress');
+  const elLiability = document.getElementById('top-liability-feature');
+  const elLiabilityCost = document.getElementById('top-liability-cost');
+  const elRecovery = document.getElementById('recovery-potential');
+
+  if (elLoss) elLoss.textContent = `${cfg.currency_symbol}${rev.loss.toFixed(2)} ${cfg.currency_suffix}`;
+  if (elLossSub) elLossSub.textContent = `Driven by ${rev.currentRating.toFixed(1)} → ${rev.predictedRating.toFixed(1)} rating Δ`;
+  
+  if (elChurn) elChurn.textContent = `+${rev.churnIncrease.toFixed(1)}%`;
+  if (elChurnBar) elChurnBar.style.width = `${Math.min(100, rev.churnIncrease * 5)}%`;
+  
+  if (elLiability) {
+    const icon = FEATURE_ICONS[rev.topLiability] || '';
+    elLiability.textContent = `${icon} ${capitalize(rev.topLiability)}`;
+  }
+  if (elLiabilityCost) elLiabilityCost.textContent = `${cfg.currency_symbol}${rev.exposure.toFixed(1)} ${cfg.currency_suffix} exposure`;
+  
+  if (elRecovery) elRecovery.textContent = `${cfg.currency_symbol}${rev.recovery.toFixed(2)} ${cfg.currency_suffix}`;
 }
 
 // Boot

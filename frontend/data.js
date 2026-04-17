@@ -112,6 +112,16 @@ const THRESHOLDS = {
   positive_promote: 0.8
 };
 
+const BUSINESS_CONFIG = {
+  total_users: 500000,
+  arpu_monthly: 800, // INR per user
+  baseline_churn: 0.02, // 2% monthly churn
+  churn_per_rating_drop: 0.05, // 5% additional churn for every 1.0 star drop
+  currency_symbol: "₹",
+  currency_multiplier: 10000000, // 1 Crore
+  currency_suffix: "Cr"
+};
+
 // 55 sample reviews spanning 7 days with realistic distribution
 const SAMPLE_REVIEWS = [
   // Day 1 — 2026-04-10
@@ -201,6 +211,6 @@ const PRIORITY_CONFIG = {
 export {
   KNOWN_ASPECTS, ASPECT_ALIASES, POSITIVE_WORDS, NEGATIVE_WORDS,
   SARCASM_PATTERNS, CONTRACTIONS, SLANG_MAP, EMOTION_KEYWORDS,
-  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS,
+  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS, BUSINESS_CONFIG,
   FEATURE_ICONS, PRIORITY_CONFIG
 };

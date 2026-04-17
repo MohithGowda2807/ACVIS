@@ -141,6 +141,55 @@
     <!-- ═══════ Dashboard ═══════ -->
     <div id="dashboard" class="dashboard">
 
+
+      <!-- ─── Row 0: Revenue Impact (Judge Special) ─── -->
+      <div class="dashboard-grid">
+        <div class="dash-col-12">
+          <div class="dash-card glass-card revenue-impact-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🛡️</span> Revenue Impact Estimator (Business ROI)</span>
+              <span class="dash-card-badge" style="background: rgba(46,213,115,0.15); color: #2ed573;">FINANCIAL</span>
+            </div>
+            
+            <div class="revenue-grid">
+              <div class="revenue-item primary">
+                <div class="revenue-label">Est. Monthly Revenue Loss</div>
+                <div class="revenue-value highlight" id="est-revenue-loss">₹0.00 Cr</div>
+                <div class="revenue-sub" id="revenue-loss-sub">Driven by 4.2 → -- rating Δ</div>
+              </div>
+              
+              <div class="revenue-item">
+                <div class="revenue-label">Predicted Monthly Churn</div>
+                <div class="revenue-value" id="est-churn-increase">+0.0%</div>
+                <div class="progress-mini"><div class="progress-fill warning" style="width: 0%" id="churn-progress"></div></div>
+              </div>
+              
+              <div class="revenue-item">
+                <div class="revenue-label">Top Financial Liability</div>
+                <div class="revenue-value feature-pill" id="top-liability-feature">--</div>
+                <div class="revenue-sub" id="top-liability-cost">₹0.0 Cr exposure</div>
+              </div>
+
+              <div class="revenue-item">
+                <div class="revenue-label">Recovery Potential (ROI of Fix)</div>
+                <div class="revenue-value positive" id="recovery-potential">₹0.0 Cr</div>
+                <div class="revenue-sub">By resolving critical alerts</div>
+              </div>
+            </div>
+            
+            <div class="revenue-footer">
+              <div class="formula-info">
+                <span>Model: Churn Δ = (Rating Δ × 5.0%) + Baseline</span>
+                <span class="dot"></span>
+                <span>Audience: 500,000 Users</span>
+                <span class="dot"></span>
+                <span>ARPU: ₹800</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Row 1: Feature Sentiment + Donut Charts -->
       <div class="dashboard-grid">
         <div class="dash-col-8">
