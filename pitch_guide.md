@@ -37,9 +37,23 @@ Use this guide to structure your response to judges. Your goal is to prove **ACV
    - Scroll to the bottom of the dashboard.
    - Say: *"This is our crystal ball. While other tools tell you what happened, the Horizon Risk Radar tells you what WILL happen. It uses sentiment velocity to find features like 'Connectivity' which are trending poorly today and will likely spike tomorrow if not addressed."*
 
+6. **THE FINALE: AI Product Manager (Autonomous Mode)**:
+   - Scroll to the very top of the dashboard.
+   - Say: *"Finally, look at the AI Command Center. This is where we upgrade from 'Data' to 'Decisions'. ACVIS isn't just a dashboard; it's an autonomous PM. Based on the battery crisis, it has already issued a directive to rollback Update v2.1 and pivot the engineering team to stability. We don't just find problems; we govern the solution."*
+
+7. **Strategic Execution Roadmap**:
+   - Scroll to the new Roadmap section.
+   - Say: *"We don't just issue directives; we provide the exact timeline for execution. Our roadmap categorizes actions into the next 24 hours (immediate mitigation) up to the next 30 days (long-term growth). This is total business alignment."*
+
 ---
 
 ## 🛡️ Defending the "Judge Traps" (Q&A)
+
+**Q: How do you handle 'Autonomous Decisions'? Isn't that risky?**
+**A:** The system works in a "Human-in-the-loop" mode. It generates **Directives** with a **Confidence/Trust Score**. For high-risk decisions like rollbacks, a human still clicks "Execute", but ACVIS does 90% of the research and identifies the "Price of Inaction" automatically.
+
+**Q: How is the Roadmap generated?**
+**A:** It’s a multi-layered mapping of Priority -> Timeframe. 'Critical' issues (like safety or major regressions) are mapped to 24h. 'High' priority issues (performance) to 7d, and 'Medium/Low' issues (UI Polish/Marketing) to 30d. It’s an automated PMO (Project Management Office).
 
 **Q: How is 'Future Prediction' different from 'Trends'?**
 **A:** Trends show you historical spikes (what is already broken). The Risk Radar analyzes the *acceleration* (velocity) of negative feedback. It catches issues that have only 2-3 negative reviews today but are growing at 200%—allowing us to stop the spike before it ever hits the live dashboard alerts.

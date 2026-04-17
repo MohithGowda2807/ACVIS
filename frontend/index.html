@@ -143,6 +143,32 @@
     <div id="dashboard" class="dashboard">
 
 
+      <!-- ─── Row -1: AI Command Center (Autonomous PM Mode) ─── -->
+      <div class="dashboard-grid">
+        <div class="dash-col-12">
+          <div class="dash-card glass-card command-center-card" id="command-center" style="display: none;">
+            <div class="command-center-header">
+              <div class="command-header-left">
+                <div class="pm-brain-icon">🧠</div>
+                <div>
+                  <div class="command-title">AI PRODUCT MANAGER DIRECTIVES</div>
+                  <div class="command-subtitle">ACVIS Decision Authority System — v4.0 Active</div>
+                </div>
+              </div>
+              <div class="command-header-right">
+                <div class="trust-score-container">
+                  <div class="trust-label">System Trust Score</div>
+                  <div class="trust-value" id="trust-score">0%</div>
+                </div>
+              </div>
+            </div>
+            <div class="directives-grid" id="directives-list">
+              <!-- Directives will be injected here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── Row 0: Revenue Impact + Competitor Benchmarking ─── -->
       <div class="dashboard-grid">
         <div class="dash-col-7">
@@ -307,7 +333,42 @@
         </div>
       </div>
 
-      <!-- Row 5: Processed Reviews -->
+      <!-- Row 5: Strategic Implementation Roadmap -->
+      <div class="dashboard-grid">
+        <div class="dash-col-12">
+          <div class="dash-card glass-card roadmap-card" id="strategic-roadmap">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🗓️</span> Strategic Execution Roadmap</span>
+              <span class="dash-card-badge" style="background: rgba(108,92,231,0.15); color: var(--accent-secondary);">PHASED</span>
+            </div>
+            <div class="roadmap-grid">
+              <!-- Phase 1 -->
+              <div class="roadmap-phase">
+                <div class="phase-header">Next 24 Hours</div>
+                <div class="phase-list" id="phase-24h">
+                  <!-- Critical tasks -->
+                </div>
+              </div>
+              <!-- Phase 2 -->
+              <div class="roadmap-phase">
+                <div class="phase-header">Next 7 Days</div>
+                <div class="phase-list" id="phase-7d">
+                  <!-- High tasks -->
+                </div>
+              </div>
+              <!-- Phase 3 -->
+              <div class="roadmap-phase">
+                <div class="phase-header">Next 30 Days</div>
+                <div class="phase-list" id="phase-30d">
+                  <!-- Medium/Low tasks -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 6: Processed Reviews -->
       <div class="dashboard-grid">
         <div class="dash-col-12">
           <div class="dash-card glass-card">

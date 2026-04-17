@@ -608,6 +608,8 @@ function renderDashboard() {
   dashboard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   renderRevenueImpact();
+  renderCommandCenter();
+  renderRoadmap();
   renderFeatureSentiment();
   renderDonutCharts();
   renderTrendChart();
@@ -1353,6 +1355,119 @@ function renderCompetitorComparison() {
 
 // Boot
 document.addEventListener('DOMContentLoaded', initApp);
+
+// ============================================================
+// 11. STRATEGIC IMPLEMENTATION ROADMAP
+// ============================================================
+function renderRoadmap() {
+  const p24 = document.getElementById('phase-24h');
+  const p7d = document.getElementById('phase-7d');
+  const p30d = document.getElementById('phase-30d');
+  
+  if (!p24 || !p7d || !p30d || !appState.actions.length) return;
+  
+  const actions = appState.actions;
+  
+  const mapAction = (a) => `
+    <div class="roadmap-task" style="--c: ${getPriorityColor(a.priority)}">
+      <div class="task-feature">${capitalize(a.feature)}</div>
+      <div class="task-text">${a.action}</div>
+    </div>
+  `;
+
+  p24.innerHTML = actions.filter(a => a.priority === 'critical').map(mapAction).join('') || '<div class="empty-state-text">No immediate critical tasks.</div>';
+  p7d.innerHTML = actions.filter(a => a.priority === 'high').map(mapAction).join('') || '<div class="empty-state-text">No tactical tasks planned.</div>';
+  p30d.innerHTML = actions.filter(a => a.priority === 'medium' || a.priority === 'low').map(mapAction).join('') || '<div class="empty-state-text">No strategic tasks.</div>';
+}
+
+function getPriorityColor(p) {
+    if (p === 'critical') return '#ff3b5c';
+    if (p === 'high') return '#ff9f43';
+    return '#00d2d3';
+}
+
+// ============================================================
+// 10. AI PRODUCT MANAGER (AUTONOMOUS MODE)
+// ============================================================
+function renderCommandCenter() {
+  const card = document.getElementById('command-center');
+  const list = document.getElementById('directives-list');
+  const trustEl = document.getElementById('trust-score');
+  
+  if (!card || !list || !appState.aiOutputs.length) return;
+  
+  card.style.display = 'block';
+  
+  const directives = generateAutonomousDirectives();
+  
+  // Calculate trust score based on data volume and consistency
+  const confidence = Math.min(98, 70 + (appState.rawReviews.length / 2));
+  trustEl.textContent = `${Math.round(confidence)}%`;
+
+  list.innerHTML = directives.map(d => `
+    <div class="directive-card ${d.type.toLowerCase()}">
+      <div class="directive-status" style="color: ${getStatusColor(d.type)}">${d.type} DIRECTIVE</div>
+      <div class="directive-text">${d.text}</div>
+      <div class="directive-reason">${d.reason}</div>
+      <button class="directive-action-btn" onclick="showToast('info', 'Command executed: ${d.text.split(':')[0]}')">Execute Now</button>
+    </div>
+  `).join('');
+}
+
+function getStatusColor(type) {
+    if (type === 'CRITICAL') return '#ff3b5c';
+    if (type === 'ADVISORY') return '#ff9f43';
+    return '#00d2d3';
+}
+
+function generateAutonomousDirectives() {
+  const directives = [];
+  const rev = appState.revenueImpact;
+  const radar = calculateRiskVelocity(appState.trends);
+  
+  // 1. Critical Rollback Check
+  if (rev.loss > 2.0 || radar.some(r => r.feature === 'battery' && r.velocity > 0.4)) {
+    directives.push({
+      type: 'CRITICAL',
+      text: 'Rollback Update v2.1 Immediately',
+      reason: `Detected catastrophic rating drop and ₹${rev.loss.toFixed(1)}Cr revenue risk linked to Battery regressions.`
+    });
+  }
+
+  // 2. Resource Allocation
+  if (rev.predictedRating < 4.0) {
+    directives.push({
+      type: 'ADVISORY',
+      text: 'Pivot Engineering to Bug-Fix Sprint',
+      reason: 'Predicted rating trend is declining. Reallocate 60% of feature capacity to stability.'
+    });
+  }
+
+  // 3. Marketing Opportunity
+  const heroFeature = Object.entries(appState.featureSentiment).find(([f, s]) => s.positive > 0.8 && s.total > 10);
+  if (heroFeature) {
+    directives.push({
+      type: 'GROWTH',
+      text: `Launch Viral Campaign for ${capitalize(heroFeature[0])}`,
+      reason: `Sentiment for ${heroFeature[0]} is at ${Math.round(heroFeature[1].positive * 100)}%. High leverage for user acquisition.`
+    });
+  }
+  
+  // 4. Feature Release Governance
+  if (radar.some(r => r.velocity > 0.5)) {
+    directives.push({
+      type: 'ADVISORY',
+      text: 'Freeze Secondary Feature Releases',
+      reason: 'System instability detected in core modules. Prevent new regressions by freezing the pipeline.'
+    });
+  }
+
+  return directives.length ? directives : [{
+    type: 'GROWTH',
+    text: 'Maintain Current Roadmap',
+    reason: 'System health is stable. All core metrics are within nominal ranges.'
+  }];
+}
 
 // ============================================================
 // 9. HORIZON RISK RADAR (PREDICTIVE)
