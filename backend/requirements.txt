@@ -8,3 +8,8 @@ pyjwt
 langdetect
 dnspython
 python-multipart
+# newly added ML & AI deps
+scikit-learn
+pandas
+joblib
+groq

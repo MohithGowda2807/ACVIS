@@ -3,9 +3,10 @@ from models import ReviewInput, UserCreate, UserLogin, UserResponse, Token
 from pipeline import run_pipeline
 from database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs
 from auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from middleware import get_current_user, require_company
+from middleware import get_current_user, require_company, require_user
 from datetime import timedelta
 import logging
+from chatbot import get_chatbot_response
 
 logger = logging.getLogger("acvis.routes")
 router = APIRouter()
@@ -113,6 +114,20 @@ async def get_me(user=Depends(get_current_user)):
 async def get_trend_alerts(user=Depends(get_current_user)):
     doc = insights.find_one({}, {"_id": 0, "trend_alerts": 1})
     return doc.get("trend_alerts", {}) if doc else {}
+
+
+# ─── Chatbot ───
+@router.post("/api/chat/user")
+async def chat_user(message: dict, user=Depends(require_user)):
+    query = message.get("message", "")
+    response = get_chatbot_response(query, "user")
+    return {"reply": response}
+
+@router.post("/api/chat/company")
+async def chat_company(message: dict, user=Depends(require_company)):
+    query = message.get("message", "")
+    response = get_chatbot_response(query, "company")
+    return {"reply": response}
 
 
 @router.get("/api/health")

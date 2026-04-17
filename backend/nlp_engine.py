@@ -5,6 +5,17 @@ Full pipeline: ingestion → preprocessing → NLP → insights → decisions
 import re
 import hashlib
 from typing import Dict, List, Any, Optional, Tuple
+import joblib
+import os
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'sentiment_model.pkl')
+try:
+    sentiment_model = joblib.load(MODEL_PATH)
+    print(f"[OK] ML model loaded from {MODEL_PATH}")
+except Exception as e:
+    print(f"[WARNING] Could not load ML model: {e}")
+    sentiment_model = None
+
 
 # ─── Aspect Aliases ───
 ASPECT_ALIASES = {
@@ -195,6 +206,18 @@ def extract_aspects(text: str) -> List[str]:
 
 
 def score_sentiment(text: str) -> str:
+    # 1. Use actual ML model if available
+    if sentiment_model:
+        try:
+            pred = sentiment_model.predict([text])[0]
+            if pred == 1:
+                return "positive"
+            else:
+                return "negative"
+        except Exception:
+            pass # Fall back to heuristics if model fails
+
+    # 2. Fall back to heuristic rule-based logic
     words = text.split()
     pos = sum(1 for w in words if w in POSITIVE_WORDS)
     neg = sum(1 for w in words if w in NEGATIVE_WORDS)

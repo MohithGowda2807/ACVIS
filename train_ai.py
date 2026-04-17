@@ -7,6 +7,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 import warnings
+import joblib
 warnings.filterwarnings('ignore')
 
 print("Loading dataset: 7817_1.csv")
@@ -35,6 +36,10 @@ model = Pipeline([
 model.fit(X_train, y_train)
 accuracy = model.score(X_test, y_test)
 print(f"Classifier Accuracy: {accuracy:.2f}")
+
+# Save the trained model
+print("Saving model to backend/sentiment_model.pkl...")
+joblib.dump(model, 'backend/sentiment_model.pkl')
 
 # 2. Extract Features (Aspect-based sentiment simulation)
 print("Extracting Aspects...")

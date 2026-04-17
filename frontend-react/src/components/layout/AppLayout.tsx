@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/appStore';
 import { useAuthStore } from '@/store/authStore';
 import { Search, Play, LogOut, User, ChevronDown, Activity } from 'lucide-react';
+import Chatbot from '@/components/Chatbot';
 
 export default function AppLayout() {
   const portal = useAppStore(s => s.portal);
@@ -154,6 +155,9 @@ export default function AppLayout() {
       <footer className="bg-amazon-nav text-white text-center py-6 text-sm mt-8">
         <p className="text-gray-400">© 2026, ACVIS — Autonomous Customer Voice Intelligence System</p>
       </footer>
+      
+      {/* Chatbot Widget */}
+      <Chatbot />
     </div>
   );
 }

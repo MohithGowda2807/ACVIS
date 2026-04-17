@@ -33,4 +33,6 @@ export const api = {
   getStats: () => request('/stats'),
   getHealth: () => request('/health'),
   getMe: () => request('/auth/me'),
+  chatUser: (message: string) => request('/chat/user', { method: 'POST', body: JSON.stringify({ message }) }),
+  chatCompany: (message: string) => request('/chat/company', { method: 'POST', body: JSON.stringify({ message }) }),
 };
