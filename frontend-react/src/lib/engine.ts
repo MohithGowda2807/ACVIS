@@ -103,15 +103,31 @@ function extractAspects(text: string): string[] {
   return Object.keys(found);
 }
 
-function scoreSentiment(text: string): string {
-  const words = text.split(/\s+/);
+function scoreSentiment(text: string, rating: number | null = null): string {
+  // 1. Rating Priority (Direct Signal)
+  if (rating !== null) {
+    if (rating >= 4) return 'positive';
+    if (rating <= 2) return 'negative';
+  }
+
+  const textLower = text.toLowerCase();
+  
+  // 2. Strict Negative Keyword Overrides
+  const negStrict = ['trash', 'garbage', 'worst', 'useless', 'scam', 'terrible', 'pathetic'];
+  if (negStrict.some(w => textLower.includes(w))) return 'negative';
+
+  // 3. Keyword Scoring with Punctuation Handling
+  // Strip punctuation from words for dictionary matching
+  const words = textLower.split(/\s+/).map(w => w.replace(/[.,!?-]/g, ''));
   let pos = 0, neg = 0;
   for (const w of words) {
-    if (POSITIVE_WORDS.includes(w)) pos++;
-    if (NEGATIVE_WORDS.includes(w)) neg++;
+    if (POSITIVE_WORDS.includes(w)) pos += 1.5;
+    if (NEGATIVE_WORDS.includes(w)) neg += 1.5;
   }
-  const isSarcastic = SARCASM_PATTERNS.some(p => p.test(text));
+  
+  const isSarcastic = SARCASM_PATTERNS.some(p => p.test(textLower));
   if (isSarcastic) { [pos, neg] = [neg, pos]; }
+  
   if (pos > neg) return 'positive';
   if (neg > pos) return 'negative';
   return 'neutral';
@@ -138,7 +154,7 @@ export function analyzeAll(processedReviews: ProcessedReview[]): AIOutput[] {
   return processedReviews.map(r => {
     const aspects = extractAspects(r.clean_text);
     const aspectSentiment: Record<string, string> = {};
-    for (const a of aspects) { aspectSentiment[a] = scoreSentiment(r.clean_text); }
+    for (const a of aspects) { aspectSentiment[a] = scoreSentiment(r.clean_text, r.rating); }
     const emotion = detectEmotion(r.clean_text);
     const keywords = extractKeywords(r.clean_text);
     return {

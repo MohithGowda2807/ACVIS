@@ -278,91 +278,16 @@ def extract_keywords(text: str) -> List[str]:
     return [w for w in words if w not in STOPWORDS and w not in all_known][:5]
 
 
-def detect_fake_reviews(processed: List[dict]) -> List[dict]:
-    """
-    Identifies spam and bot patterns:
-    - Duplicates: Exact clean text matches in the batch.
-    - Bot Patterns: Very short text with extreme sentiment and no aspects.
-    - Spam Patterns: Excessive symbols or repetitive characters.
-    """
-    seen_texts = {}
-    result = []
-    
-    for r in processed:
-        text = r["clean_text"]
-        orig = r["original_text"]
-        is_fake = False
-        reason = None
-        
-        # 1. Duplicate Detection
-        if text in seen_texts:
-            is_fake = True
-            reason = "Duplicate content detected"
-            seen_texts[text] += 1
-        else:
-            seen_texts[text] = 1
-            
-        # 2. Bot Pattern (Short & Extreme)
-        sentiment = score_sentiment(text, r.get("rating"))
-        aspects = extract_aspects(text)
-        
-        # Loosened Bot Pattern criteria:
-        # - Review must be extremely short (< 10 chars)
-        # - AND have no specific aspects (general)
-        # - AND either be a duplicate OR have excessive symbols
-        if not is_fake and len(text) < 10 and aspects == ["general"]:
-            has_other_signal = re.search(r"[!$#%^&*?]{2,}", orig) or text.count(' ') < 1
-            if has_other_signal:
-                is_fake = True
-                reason = "Bot pattern: Low information density"
-            
-        # 3. Spam Pattern (Symbols, Repetition, Gibberish)
-        if not is_fake:
-            # Excessive symbols
-            symbol_count = len(re.findall(r"[!$#%^&*?]{2,}", orig))
-            if symbol_count >= 1 and len(orig) < 50:
-                 is_fake = True
-                 reason = "Spam pattern: Excessive symbols"
-            
-            # Character repetition (e.g., "aaaaaaa")
-            if not is_fake and re.search(r"(.)\1{4,}", orig):
-                is_fake = True
-                reason = "Spam pattern: Character repetition"
-                
-            # Substring repetition (e.g., "abcabcabc")
-            if not is_fake:
-                # Simple check for repetitive chunks of 3+ chars
-                for length in range(3, 10):
-                    for i in range(len(text) - length * 2 + 1):
-                        chunk = text[i:i+length]
-                        if text.count(chunk) > 3 and len(chunk) * text.count(chunk) > len(text) * 0.6:
-                            is_fake = True
-                            reason = "Spam pattern: Repetitive content"
-                            break
-                    if is_fake: break
-                
-        result.append({
-            "review_id": r["review_id"],
-            "is_fake": is_fake,
-            "fake_reason": reason
-        })
-    return result
-
-
 def analyze_all(processed_reviews: List[dict]) -> List[dict]:
     result = []
-    # Batch-level fake detection
-    fake_map = {f["review_id"]: f for f in detect_fake_reviews(processed_reviews)}
-    
     for r in processed_reviews:
         text = r["clean_text"]
         rating = r.get("rating")
         aspects = extract_aspects(text)
-        sentiment = score_sentiment(text, rating) # Passed rating here
+        sentiment = score_sentiment(text, rating)
         aspect_sentiment = {a: sentiment for a in aspects}
         emotion = detect_emotion(text)
         keywords = extract_keywords(text)
-        fake_info = fake_map.get(r["review_id"], {"is_fake": False, "fake_reason": None})
         
         result.append({
             "review_id": r["review_id"],
@@ -370,8 +295,6 @@ def analyze_all(processed_reviews: List[dict]) -> List[dict]:
             "aspect_sentiment": aspect_sentiment,
             "emotion": emotion,
             "keywords": keywords,
-            "is_fake": fake_info["is_fake"],
-            "fake_reason": fake_info["fake_reason"],
             "rating": rating,
             "timestamp": r.get("timestamp"),
             "source": r.get("source"),
@@ -515,11 +438,6 @@ def generate_decisions(feature_sentiment, trend_alerts, root_causes, predictions
                         "action": "Prioritize product stability and bug fixes",
                         "reason": f"Rating decline from {predictions['current']} to {predictions['predicted']}"})
 
-    # Fake Review Alerts
-    fake_count = sum(1 for a in [a for a in alerts if "Fake" in a.get("message", "")] ) 
-    # Actually, we need to pass fake_stats to decisions or recalculate
-    # For now, we'll manually check the ai_outputs if needed, but easier to pass it
-    
     priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     actions.sort(key=lambda a: priority_order.get(a["priority"], 9))
     alerts.sort(key=lambda a: priority_order.get(a["priority"], 9))

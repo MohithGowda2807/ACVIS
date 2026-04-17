@@ -31,14 +31,14 @@ export const POSITIVE_WORDS = [
 ];
 
 export const NEGATIVE_WORDS = [
-  'bad', 'poor', 'worst', 'terrible', 'horrible', 'hate', 'awful',
-  'slow', 'lag', 'hang', 'crash', 'freeze', 'drain', 'dead', 'broke',
-  'disappointed', 'useless', 'waste', 'overpriced', 'ugly', 'cheap',
-  'blurry', 'dim', 'weak', 'noisy', 'bloated', 'heavy', 'annoying',
-  'frustrating', 'pathetic', 'mediocre', 'regret', 'refund', 'issue',
-  'problem', 'defect', 'malfunction', 'unresponsive', 'broken',
-  'glitch', 'stutter', 'overheat', 'overheating', 'fails', 'unusable',
-  'trash'
+   'trash', 'garbage', 'useless', 'worst', 'pathetic', 'scam', 'terrible',
+   'expensive', 'overpriced', 'cheap', 'ugly', 'bad', 'poor', 'awful',
+   'horrible', 'hate', 'disappointed', 'regret', 'refund', 'issue',
+   'problem', 'defect', 'malfunction', 'unresponsive', 'broken',
+   'glitch', 'stutter', 'overheat', 'overheating', 'fails', 'unusable',
+   'slow', 'lag', 'hang', 'crash', 'freeze', 'drain', 'dead', 'broke',
+   'blurry', 'dim', 'weak', 'noisy', 'bloated', 'heavy', 'annoying',
+   'frustrating', 'mediocre', 'useless', 'rubbish', 'junk'
 ];
 
 export const SARCASM_PATTERNS = [
