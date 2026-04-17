@@ -208,9 +208,33 @@ const PRIORITY_CONFIG = {
   low:      { color: "#48dbfb", bg: "rgba(72,219,251,0.12)", icon: "ℹ️", label: "LOW" }
 };
 
+// 30 Competitor Sample Reviews (Better Battery, Worse Camera/UI)
+const SAMPLE_COMPETITOR_REVIEWS = [
+  { review_id: "C001", text: "Battery life is the best I've ever had. Easily 2 days.", rating: 5, timestamp: "2026-04-16T08:00:00Z", source: "amazon" },
+  { review_id: "C002", text: "Phone is a beast, battery lasts forever. Quick charging too.", rating: 5, timestamp: "2026-04-16T09:00:00Z", source: "playstore" },
+  { review_id: "C003", text: "Camera is quite blurry in low light. Disappointed.", rating: 2, timestamp: "2026-04-16T10:00:00Z", source: "amazon" },
+  { review_id: "C004", text: "UI is very clunky and feels outdated. Needs a refresh.", rating: 3, timestamp: "2026-04-16T11:00:00Z", source: "twitter" },
+  { review_id: "C005", text: "Excellent battery standby. Barely drops overnight.", rating: 5, timestamp: "2026-04-15T08:00:00Z", source: "playstore" },
+  { review_id: "C006", text: "Photos are average. My old phone took better pictures.", rating: 3, timestamp: "2026-04-15T09:00:00Z", source: "amazon" },
+  { review_id: "C007", text: "Interface is confusing. Hard to find simple settings.", rating: 2, timestamp: "2026-04-15T10:00:00Z", source: "playstore" },
+  { review_id: "C008", text: "Battery is the only reason to buy this. 48 hours easily.", rating: 4, timestamp: "2026-04-14T08:00:00Z", source: "amazon" },
+  { review_id: "C009", text: "Camera focus is slow. Missed some great shots.", rating: 2, timestamp: "2026-04-14T09:00:00Z", source: "twitter" },
+  { review_id: "C010", text: "Battery life: 10/10. UI: 3/10.", rating: 4, timestamp: "2026-04-13T08:00:00Z", source: "playstore" },
+  { review_id: "C011", text: "Incredible battery! Can watch 10 hours of video no problem.", rating: 5, timestamp: "2026-04-13T09:00:00Z", source: "amazon" },
+  { review_id: "C012", text: "Video quality is grainy. Stabilisation is poor.", rating: 2, timestamp: "2026-04-12T08:00:00Z", source: "playstore" },
+  { review_id: "C013", text: "Sturdy build but the UI is a mess. Icons are ugly.", rating: 3, timestamp: "2026-04-12T09:00:00Z", source: "twitter" },
+  { review_id: "C014", text: "Fast battery charging and long life. Very happy with power.", rating: 5, timestamp: "2026-04-11T08:00:00Z", source: "amazon" },
+  { review_id: "C015", text: "Camera is the main weakness here. Don't buy for photos.", rating: 2, timestamp: "2026-04-11T09:00:00Z", source: "playstore" },
+  { review_id: "C016", text: "Battery is amazing. I forget to charge it sometimes.", rating: 5, timestamp: "2026-04-10T08:00:00Z", source: "twitter" },
+  { review_id: "C017", text: "UI crashes sometimes. Software is not polished.", rating: 2, timestamp: "2026-04-10T09:00:00Z", source: "amazon" },
+  { review_id: "C018", text: "Best battery on market. Hands down.", rating: 5, timestamp: "2026-04-09T08:00:00Z", source: "playstore" },
+  { review_id: "C019", text: "Screen is nice but UI is frustratingly slow.", rating: 3, timestamp: "2026-04-09T09:00:00Z", source: "amazon" },
+  { review_id: "C020", text: "Battery life is staggering. 2.5 days with mixed use.", rating: 5, timestamp: "2026-04-08T08:00:00Z", source: "twitter" }
+];
+
 export {
   KNOWN_ASPECTS, ASPECT_ALIASES, POSITIVE_WORDS, NEGATIVE_WORDS,
   SARCASM_PATTERNS, CONTRACTIONS, SLANG_MAP, EMOTION_KEYWORDS,
-  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS, BUSINESS_CONFIG,
+  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS, SAMPLE_COMPETITOR_REVIEWS, BUSINESS_CONFIG,
   FEATURE_ICONS, PRIORITY_CONFIG
 };

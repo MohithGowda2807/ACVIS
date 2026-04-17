@@ -1315,7 +1315,82 @@ a { color: var(--accent-secondary); text-decoration: none; }
 }
 
 @media (max-width: 480px) {
-  .stats-bar { grid-template-columns: 1fr; }
   .stat-value { font-size: 22px; }
   .hero h1 { font-size: 28px; }
+}
+
+/* ─── Competitor Benchmarking ─── */
+.comp-benchmarks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bench-item {
+  animation: slideInUp 0.4s var(--ease) both;
+}
+
+.bench-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.bench-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bench-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bench-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 60px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bench-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bench-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s var(--ease);
+}
+
+.bench-bar-fill.you { background: var(--accent-primary); }
+.bench-bar-fill.comp { background: var(--text-muted); }
+
+.market-alert {
+  margin-top: 20px;
+  padding: 12px;
+  background: rgba(255, 59, 92, 0.1);
+  border: 1px solid rgba(255, 59, 92, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--critical);
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.market-alert.good {
+  color: var(--success);
+  background: rgba(0, 210, 211, 0.1);
+  border-color: rgba(0, 210, 211, 0.3);
 }

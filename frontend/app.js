@@ -6,7 +6,7 @@
 import {
   KNOWN_ASPECTS, ASPECT_ALIASES, POSITIVE_WORDS, NEGATIVE_WORDS,
   SARCASM_PATTERNS, CONTRACTIONS, SLANG_MAP, EMOTION_KEYWORDS,
-  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS, BUSINESS_CONFIG,
+  ROOT_CAUSE_KEYWORDS, THRESHOLDS, SAMPLE_REVIEWS, SAMPLE_COMPETITOR_REVIEWS, BUSINESS_CONFIG,
   FEATURE_ICONS, PRIORITY_CONFIG
 } from './data.js';
 
@@ -31,6 +31,9 @@ let appState = {
     currentRating: 0,
     predictedRating: 0
   },
+  comparisonMode: false,
+  companyStats: null,
+  competitorStats: null,
   isProcessing: false
 };
 
@@ -577,7 +580,15 @@ async function runPipeline(rawData) {
     setPipelineStage(5);
     await sleep(300);
     showLoading(false);
-    renderDashboard();
+
+    if (appState.comparisonMode) {
+      appState.competitorStats = { ...appState.featureSentiment };
+      renderCompetitorComparison();
+    } else {
+      appState.companyStats = { ...appState.featureSentiment };
+      renderDashboard();
+    }
+    
     showToast('success', `Analysis complete! Processed ${appState.rawReviews.length} reviews.`);
   } catch (err) {
     console.error('Pipeline error:', err);
@@ -605,6 +616,10 @@ function renderDashboard() {
   renderPredictions();
   renderEmotions();
   renderProcessedReviews();
+  
+  if (appState.competitorStats) {
+      renderCompetitorComparison();
+  }
 }
 
 function renderFeatureSentiment() {
@@ -1145,13 +1160,18 @@ function initApp() {
     runPipeline(reviews);
   });
 
-  // Load sample button
+  // Load sample button (Company)
   document.getElementById('btn-load-sample').addEventListener('click', () => {
-    document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
-    document.querySelector('[data-panel="panel-sample"]').classList.add('active');
-    document.getElementById('panel-sample').classList.add('active');
-    showToast('info', `${SAMPLE_REVIEWS.length} sample reviews loaded. Click "Run Analysis" to start!`);
+    appState.comparisonMode = false;
+    showToast('info', `${SAMPLE_REVIEWS.length} company reviews ready. Click "Run Analysis".`);
+    runPipeline(SAMPLE_REVIEWS);
+  });
+
+  // Load competitor button
+  document.getElementById('btn-load-competitor').addEventListener('click', () => {
+    appState.comparisonMode = true;
+    showToast('info', `${SAMPLE_COMPETITOR_REVIEWS.length} competitor reviews ready. Starting benchmark...`);
+    runPipeline(SAMPLE_COMPETITOR_REVIEWS);
   });
 
   // Clear button
@@ -1249,8 +1269,12 @@ function renderRevenueImpact() {
   const elLiabilityCost = document.getElementById('top-liability-cost');
   const elRecovery = document.getElementById('recovery-potential');
 
-  if (elLoss) elLoss.textContent = `${cfg.currency_symbol}${rev.loss.toFixed(2)} ${cfg.currency_suffix}`;
-  if (elLossSub) elLossSub.textContent = `Driven by ${rev.currentRating.toFixed(1)} → ${rev.predictedRating.toFixed(1)} rating Δ`;
+  if (elLoss) {
+    elLoss.textContent = `${cfg.currency_symbol}${rev.loss.toFixed(2)} ${cfg.currency_suffix}`;
+  }
+  if (elLossSub) {
+    elLossSub.textContent = `Driven by ${rev.currentRating.toFixed(1)} → ${rev.predictedRating.toFixed(1)} rating Δ`;
+  }
   
   if (elChurn) elChurn.textContent = `+${rev.churnIncrease.toFixed(1)}%`;
   if (elChurnBar) elChurnBar.style.width = `${Math.min(100, rev.churnIncrease * 5)}%`;
@@ -1260,8 +1284,70 @@ function renderRevenueImpact() {
     elLiability.textContent = `${icon} ${capitalize(rev.topLiability)}`;
   }
   if (elLiabilityCost) elLiabilityCost.textContent = `${cfg.currency_symbol}${rev.exposure.toFixed(1)} ${cfg.currency_suffix} exposure`;
+
+  if (elRecovery) {
+     elRecovery.textContent = `${cfg.currency_symbol}${rev.recovery.toFixed(2)} ${cfg.currency_suffix}`;
+  }
+}
+
+// ============================================================
+// 8. COMPETITOR BENCHMARKING
+// ============================================================
+function renderCompetitorComparison() {
+  const card = document.getElementById('competitor-benchmarking-card');
+  const list = document.getElementById('competitor-comparison-list');
+  const alertBox = document.getElementById('comp-market-alert');
   
-  if (elRecovery) elRecovery.textContent = `${cfg.currency_symbol}${rev.recovery.toFixed(2)} ${cfg.currency_suffix}`;
+  if (!appState.companyStats || !appState.competitorStats) return;
+  
+  card.style.display = 'block';
+  
+  const features = ['battery', 'camera', 'ui', 'performance'];
+  
+  list.innerHTML = features.map(f => {
+    const you = appState.companyStats[f] ? Math.round(appState.companyStats[f].negative * 100) : 0;
+    const comp = appState.competitorStats[f] ? Math.round(appState.competitorStats[f].negative * 100) : 0;
+    const icon = FEATURE_ICONS[f] || '📋';
+    
+    return `
+      <div class="bench-item">
+        <div class="bench-header">
+          <span>${icon} ${capitalize(f)}</span>
+          <span style="color: ${you > comp ? 'var(--critical)' : 'var(--success)'}">${you}% vs ${comp}%</span>
+        </div>
+        <div class="bench-bars">
+          <div class="bench-row">
+            <span class="bench-label">YOU</span>
+            <div class="bench-bar-track"><div class="bench-bar-fill you" style="width: ${you}%"></div></div>
+          </div>
+          <div class="bench-row">
+            <span class="bench-label">COMP</span>
+            <div class="bench-bar-track"><div class="bench-bar-fill comp" style="width: ${comp}%"></div></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // High-level Market Alert
+  const battYou = appState.companyStats['battery'] ? appState.companyStats['battery'].negative : 0;
+  const battComp = appState.competitorStats['battery'] ? appState.competitorStats['battery'].negative : 0;
+  
+  if (battYou > battComp + 0.2) {
+      alertBox.innerHTML = `
+        <div class="market-alert">
+          <span>📉</span>
+          <div><strong>Losing Market Share:</strong> Your battery complaints are ${Math.round(battYou*100)}% vs Competitor's ${Math.round(battComp*100)}%. Critical risk.</div>
+        </div>
+      `;
+  } else {
+      alertBox.innerHTML = `
+        <div class="market-alert good">
+          <span>🚀</span>
+          <div><strong>Market Leader:</strong> Your product sentiment is competitive in key segments.</div>
+        </div>
+      `;
+  }
 }
 
 // Boot

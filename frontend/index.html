@@ -116,20 +116,21 @@
 
         <div id="panel-sample" class="input-panel">
           <div style="padding: 24px; text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
-            <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">55 Sample Reviews Ready</div>
+            <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Competitor Comparison Ready</div>
             <div style="font-size: 13px; color: var(--text-secondary); max-width: 480px; margin: 0 auto; line-height: 1.6;">
-              Pre-loaded dataset spanning 7 days with realistic reviews covering battery, camera, performance, UI, display, and more. Includes a <strong style="color: var(--negative);">battery complaint spike</strong> on Day 5 to demonstrate trend detection and alert generation.
+              Analyze your data vs. competitors. Load <strong>Company Sample</strong> to see your current issues (like the battery spike), then load <strong>Competitor Sample</strong> to generate the benchmarking report.
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+              <button class="btn btn-secondary" id="btn-load-sample">📦 Company Data</button>
+              <button class="btn btn-secondary" id="btn-load-competitor" style="border-color: var(--accent-secondary); color: var(--accent-secondary);">🕵️ Competitor Data</button>
             </div>
           </div>
         </div>
 
-        <div class="input-actions">
+        <div class="input-actions" id="standard-actions">
           <button class="btn btn-primary" id="btn-analyze">
             <span>⚡</span> Run Analysis
-          </button>
-          <button class="btn btn-secondary" id="btn-load-sample">
-            <span>📦</span> Load Sample Data
           </button>
           <button class="btn btn-ghost" id="btn-clear">
             <span>🗑️</span> Clear
@@ -142,9 +143,9 @@
     <div id="dashboard" class="dashboard">
 
 
-      <!-- ─── Row 0: Revenue Impact (Judge Special) ─── -->
+      <!-- ─── Row 0: Revenue Impact + Competitor Benchmarking ─── -->
       <div class="dashboard-grid">
-        <div class="dash-col-12">
+        <div class="dash-col-7">
           <div class="dash-card glass-card revenue-impact-card">
             <div class="dash-card-header">
               <span class="dash-card-title"><span>🛡️</span> Revenue Impact Estimator (Business ROI)</span>
@@ -186,6 +187,21 @@
                 <span>ARPU: ₹800</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div class="dash-col-5">
+          <div class="dash-card glass-card competitor-card" id="competitor-benchmarking-card" style="display: none;">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🕵️</span> Competitor Benchmarking</span>
+              <span class="dash-card-badge" style="background: rgba(108,92,231,0.15); color: var(--accent-secondary);">LIVE</span>
+            </div>
+            <div class="comp-benchmarks" id="competitor-comparison-list">
+              <div class="empty-state" style="padding: 20px;">
+                <div class="empty-state-text" style="font-size: 13px;">Load competitor data to see benchmarking.</div>
+              </div>
+            </div>
+            <div id="comp-market-alert"></div>
           </div>
         </div>
       </div>
