@@ -87,8 +87,17 @@ def run_pipeline(reviews_data: list) -> dict:
 
     # --- Stage 4: Insights ---
     logger.info("Stage 4: Generating insights...")
-    feature_sentiment = aggregate_feature_sentiment(ai_results)
-    trends = aggregate_trends(ai_results)
+    
+    # Filter out fake reviews for sentiment aggregation
+    verified_outputs = [out for out in ai_results if not out.get("is_fake")]
+    fake_count = len(ai_results) - len(verified_outputs)
+    fake_stats = {
+        "fake_count": fake_count,
+        "fake_percentage": round((fake_count / len(ai_results)) * 100, 2) if ai_results else 0
+    }
+
+    feature_sentiment = aggregate_feature_sentiment(verified_outputs)
+    trends = aggregate_trends(verified_outputs)
     trend_alerts = detect_spikes(trends)
     root_causes = identify_root_causes(ai_results, processed)
     emotions = aggregate_emotions(ai_results)
@@ -102,6 +111,7 @@ def run_pipeline(reviews_data: list) -> dict:
         "emotions": emotions,
         "predictions": predictions,
         "reviews_count": len(raw),
+        "fake_review_stats": fake_stats
     }
     try:
         insights.delete_many({})  # Keep latest only
@@ -112,12 +122,29 @@ def run_pipeline(reviews_data: list) -> dict:
     # --- Stage 5: Decisions ---
     logger.info("Stage 5: Generating decisions...")
     decisions = generate_decisions(feature_sentiment, trend_alerts, root_causes, predictions)
+    
+    # Add fake review alert if needed
+    if fake_stats["fake_percentage"] > 15:
+        decisions["alerts"].append({
+            "priority": "high",
+            "feature": "system",
+            "message": "High volume of suspicious reviews detected",
+            "reason": f"{fake_stats['fake_percentage']}% of reviews flagged as potential spam/bots"
+        })
+        decisions["actions"].append({
+            "priority": "high",
+            "feature": "system",
+            "action": "Enable manual review moderation or tougher CAPTCHA",
+            "reason": f"Spam/Bot detection triggered at {fake_stats['fake_percentage']}%"
+        })
+
     revenue_impact = calculate_revenue_impact(predictions, feature_sentiment, trend_alerts)
 
     action_doc = {
         "actions": decisions["actions"],
         "alerts": decisions["alerts"],
         "revenue_impact": revenue_impact,
+        "fake_review_stats": fake_stats
     }
     try:
         actions_col.delete_many({})
@@ -139,5 +166,6 @@ def run_pipeline(reviews_data: list) -> dict:
         "root_causes": root_causes,
         "emotions": emotions,
         "revenue_impact": revenue_impact,
+        "fake_review_stats": fake_stats,
         "raw_reviews": raw,
     }

@@ -41,12 +41,8 @@ class ProcessedReview(BaseModel):
     timestamp: Optional[str] = None
     source: Optional[str] = None
 
-class AIOutputModel(BaseModel):
-    review_id: str
-    aspects: List[str]
-    aspect_sentiment: Dict[str, str]
-    emotion: str
-    keywords: List[str]
+    is_fake: bool = False
+    fake_reason: Optional[str] = None
     rating: Optional[float] = None
     timestamp: Optional[str] = None
     source: Optional[str] = None
@@ -85,6 +81,7 @@ class PipelineResponse(BaseModel):
     root_causes: Dict[str, Any]
     emotions: Dict[str, int]
     revenue_impact: Dict[str, Any]
+    fake_review_stats: Optional[Dict[str, Any]] = None
 
 # ─── Ticket Models ───
 class TicketCreate(BaseModel):
