@@ -5,17 +5,17 @@ import json
 import os
 
 try:
-    from .models import ReviewInput, UserCreate, UserLogin, UserResponse, Token
+    from .models import ReviewInput, UserCreate, UserLogin, UserResponse, Token, TicketCreate, TicketUpdate, TicketResponse
     from .pipeline import run_pipeline
-    from .database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs
+    from .database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs, tickets
     from .auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-    from .middleware import get_current_user, require_company
+    from .middleware import get_current_user, require_company, require_user
 except ImportError:
-    from models import ReviewInput, UserCreate, UserLogin, UserResponse, Token
+    from models import ReviewInput, UserCreate, UserLogin, UserResponse, Token, TicketCreate, TicketUpdate, TicketResponse
     from pipeline import run_pipeline
-    from database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs
+    from database import users, insights, actions_col, raw_reviews, processed_reviews, ai_outputs, tickets
     from auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-    from middleware import get_current_user, require_company
+    from middleware import get_current_user, require_company, require_user
 
 logger = logging.getLogger("acvis.routes")
 router = APIRouter()
@@ -194,3 +194,61 @@ async def get_trend_alerts(user=Depends(get_current_user)):
 @router.get("/api/health")
 def health():
     return {"status": "ok", "message": "ACVIS API is running"}
+
+
+# ─── Tickets ───
+@router.post("/api/tickets", response_model=TicketResponse)
+async def create_ticket(ticket: TicketCreate, user=Depends(require_user)):
+    import uuid
+    ticket_id = f"TKT-{str(uuid.uuid4())[:8].upper()}"
+    new_ticket = {
+        "ticket_id": ticket_id,
+        "subject": ticket.subject,
+        "description": ticket.description,
+        "category": ticket.category,
+        "status": "open",
+        "user_email": user["email"],
+        "created_at": datetime.utcnow().isoformat(),
+        "resolved_at": None,
+        "resolution_note": None
+    }
+    tickets.insert_one(new_ticket.copy())
+    return new_ticket
+
+@router.get("/api/tickets", response_model=list[TicketResponse])
+async def get_tickets(user=Depends(get_current_user)):
+    # If company, return all tickets. If user, return only their tickets.
+    query = {} if user["role"] == "company" else {"user_email": user["email"]}
+    cursor = tickets.find(query, {"_id": 0}).sort("created_at", -1)
+    return list(cursor)
+
+@router.get("/api/tickets/{ticket_id}", response_model=TicketResponse)
+async def get_ticket(ticket_id: str, user=Depends(get_current_user)):
+    query = {"ticket_id": ticket_id}
+    if user["role"] == "user":
+        query["user_email"] = user["email"]
+    
+    ticket = tickets.find_one(query, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
+
+@router.patch("/api/tickets/{ticket_id}/resolve", response_model=TicketResponse)
+async def resolve_ticket(ticket_id: str, update: TicketUpdate, user=Depends(require_company)):
+    ticket = tickets.find_one({"ticket_id": ticket_id})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket["status"] == "resolved":
+        raise HTTPException(status_code=400, detail="Ticket is already resolved")
+
+    updated_data = {
+        "status": "resolved",
+        "resolved_at": datetime.utcnow().isoformat(),
+        "resolution_note": update.resolution_note
+    }
+    
+    tickets.update_one({"ticket_id": ticket_id}, {"$set": updated_data})
+    
+    # Return updated ticket
+    updated_ticket = tickets.find_one({"ticket_id": ticket_id}, {"_id": 0})
+    return updated_ticket

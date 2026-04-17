@@ -132,6 +132,7 @@ export default function AppLayout() {
                 Alerts
               </NavLink>
               <NavLink to="/company/actions" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Action Items</NavLink>
+              <NavLink to="/company/tickets" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Support Tickets</NavLink>
               <NavLink to="/company/reports" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>AI Reports</NavLink>
               <NavLink to="/company/settings" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Settings</NavLink>
             </>
@@ -140,6 +141,7 @@ export default function AppLayout() {
               <NavLink to="/user/insights" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Product Insights</NavLink>
               <NavLink to="/user" end className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Write a Review</NavLink>
               <NavLink to="/user/my-reviews" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Your Reviews</NavLink>
+              <NavLink to="/user/support" className={({isActive}) => `cursor-pointer border border-transparent hover:border-white px-2 py-1 rounded ${isActive?'font-bold':''}`}>Help & Support</NavLink>
             </>
           )}
         </div>

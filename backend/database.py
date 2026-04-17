@@ -46,6 +46,7 @@ ai_outputs = db["ai_outputs"]
 insights = db["insights"]
 actions_col = db["actions"]
 users = db["users"]
+tickets = db["tickets"]
 
 # Indexes (lazy — won't fail if DB is temporarily unreachable)
 try:
@@ -53,6 +54,8 @@ try:
     processed_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
     ai_outputs.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
     users.create_index([("email", ASCENDING)], unique=True)
+    tickets.create_index([("ticket_id", ASCENDING)], unique=True)
+    tickets.create_index([("user_email", ASCENDING)])
 except Exception as e:
     print(f"[WARNING] Index creation deferred: {e}")
 

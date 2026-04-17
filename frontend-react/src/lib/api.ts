@@ -34,4 +34,12 @@ export const api = {
   getStats: () => request('/stats'),
   getHealth: () => request('/health'),
   getMe: () => request('/auth/me'),
+
+  // Tickets
+  createTicket: (subject: string, description: string, category: string) =>
+    request('/tickets', { method: 'POST', body: JSON.stringify({ subject, description, category }) }),
+  getTickets: () => request('/tickets'),
+  getTicket: (ticket_id: string) => request(`/tickets/${ticket_id}`),
+  resolveTicket: (ticket_id: string, resolution_note: string) =>
+    request(`/tickets/${ticket_id}/resolve`, { method: 'PATCH', body: JSON.stringify({ resolution_note }) }),
 };

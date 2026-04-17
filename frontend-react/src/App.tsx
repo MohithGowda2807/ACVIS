@@ -19,11 +19,13 @@ import Alerts from '@/pages/company/Alerts';
 import Actions from '@/pages/company/Actions';
 import Reports from '@/pages/company/Reports';
 import SettingsPage from '@/pages/company/Settings';
+import Tickets from '@/pages/company/Tickets';
 
 // User pages
 import SubmitReview from '@/pages/user/SubmitReview';
 import MyReviews from '@/pages/user/MyReviews';
 import ProductInsights from '@/pages/user/ProductInsights';
+import SupportTickets from '@/pages/user/SupportTickets';
 
 function ProtectedRoute({ children, allowedRole }: { children: ReactElement, allowedRole: string }) {
   const { token, role } = useAuthStore();
@@ -59,6 +61,7 @@ export default function App() {
           <Route path="/company/trends" element={<ProtectedRoute allowedRole="company"><Trends /></ProtectedRoute>} />
           <Route path="/company/alerts" element={<ProtectedRoute allowedRole="company"><Alerts /></ProtectedRoute>} />
           <Route path="/company/actions" element={<ProtectedRoute allowedRole="company"><Actions /></ProtectedRoute>} />
+          <Route path="/company/tickets" element={<ProtectedRoute allowedRole="company"><Tickets /></ProtectedRoute>} />
           <Route path="/company/reports" element={<ProtectedRoute allowedRole="company"><Reports /></ProtectedRoute>} />
           <Route path="/company/settings" element={<ProtectedRoute allowedRole="company"><SettingsPage /></ProtectedRoute>} />
 
@@ -66,6 +69,7 @@ export default function App() {
           <Route path="/user" element={<ProtectedRoute allowedRole="user"><SubmitReview /></ProtectedRoute>} />
           <Route path="/user/my-reviews" element={<ProtectedRoute allowedRole="user"><MyReviews /></ProtectedRoute>} />
           <Route path="/user/insights" element={<ProtectedRoute allowedRole="user"><ProductInsights /></ProtectedRoute>} />
+          <Route path="/user/support" element={<ProtectedRoute allowedRole="user"><SupportTickets /></ProtectedRoute>} />
 
         </Route>
         
