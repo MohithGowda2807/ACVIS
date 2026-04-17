@@ -10,7 +10,40 @@ load_dotenv(Path(__file__).resolve().with_name(".env"))
 MONGO_URI = os.getenv("MONGO_URI")
 
 
-# ─── In-memory fallback when MongoDB is unavailable ───
+class InMemoryCursor:
+    """Minimal stand-in for a pymongo Cursor, supporting chainable .sort()."""
+
+    def __init__(self, docs: list[dict]):
+        self._docs = docs
+
+    def sort(self, key_or_list, direction=None):
+        if isinstance(key_or_list, list):
+            field, order = key_or_list[0]
+        else:
+            field = key_or_list
+            order = direction or 1
+
+        reverse = (order == -1)
+        
+        try:
+            # Simple sorting by field, handling missing values
+            self._docs.sort(key=lambda x: x.get(field, ""), reverse=reverse)
+        except Exception:
+            pass
+            
+        return self
+
+    def __iter__(self):
+        return iter(self._docs)
+
+    def __getitem__(self, index):
+        return self._docs[index]
+
+    def limit(self, n):
+        self._docs = self._docs[:n]
+        return self
+
+
 class InMemoryCollection:
     """Minimal dict-backed stand-in for a pymongo Collection."""
 
@@ -46,7 +79,7 @@ class InMemoryCollection:
         for doc in self._docs:
             if self._matches(doc, filter or {}):
                 results.append(self._project(doc, projection))
-        return results
+        return InMemoryCursor(results)
 
     def count_documents(self, filter: dict | None = None):
         if not filter:

@@ -19,13 +19,20 @@ export default function SupportTickets() {
   const [category, setCategory] = useState('General');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadTickets = async () => {
+    setLoadError(null);
     try {
       const data = await api.getTickets();
-      setTickets(data);
+      if (Array.isArray(data)) {
+        setTickets(data);
+      } else {
+        setLoadError(`Unexpected response format.`);
+      }
     } catch (e: any) {
       console.error(e);
+      setLoadError(e.message || 'Failed to load tickets');
     } finally {
       setLoading(false);
     }
@@ -125,7 +132,12 @@ export default function SupportTickets() {
           <div className="bg-white border border-gray-200 rounded-lg p-5">
             <h2 className="text-lg font-bold mb-4">Your Support Tickets</h2>
             
-            {loading ? (
+            {loadError ? (
+              <div className="bg-red-50 text-red-600 p-4 rounded text-center border border-red-200">
+                <p className="font-bold">Error loading tickets</p>
+                <p className="text-sm">{loadError}</p>
+              </div>
+            ) : loading ? (
               <div className="text-center py-8 text-gray-500">Loading your tickets...</div>
             ) : tickets.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded border border-dashed border-gray-300">

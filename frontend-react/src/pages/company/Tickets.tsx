@@ -21,6 +21,7 @@ export default function Tickets() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [error, setError] = useState<string | null>(null);
   
   // Resolve modal state
   const [resolvingTicket, setResolvingTicket] = useState<Ticket | null>(null);
@@ -28,11 +29,18 @@ export default function Tickets() {
   const [isResolving, setIsResolving] = useState(false);
 
   const loadTickets = async () => {
+    setError(null);
     try {
       const data = await api.getTickets();
-      setTickets(data);
+      if (Array.isArray(data)) {
+        setTickets(data);
+      } else {
+        setError(`Unexpected response format. Check console.`);
+        console.error('Expected array, got:', data);
+      }
     } catch (e: any) {
       console.error(e);
+      setError(e.message || 'Failed to load tickets');
     } finally {
       setLoading(false);
     }
@@ -101,7 +109,12 @@ export default function Tickets() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <div className="bg-red-50 text-red-600 p-6 rounded-xl border border-red-200 text-center">
+          <h3 className="font-bold text-lg mb-2">Error Loading Tickets</h3>
+          <p>{error}</p>
+        </div>
+      ) : loading ? (
         <div className="text-center py-20 text-gray-500">Loading tickets...</div>
       ) : filteredTickets.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 py-20 text-center">
