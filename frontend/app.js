@@ -615,6 +615,7 @@ function renderDashboard() {
   renderActions();
   renderPredictions();
   renderEmotions();
+  renderRiskRadar();
   renderProcessedReviews();
   
   if (appState.competitorStats) {
@@ -1352,3 +1353,72 @@ function renderCompetitorComparison() {
 
 // Boot
 document.addEventListener('DOMContentLoaded', initApp);
+
+// ============================================================
+// 9. HORIZON RISK RADAR (PREDICTIVE)
+// ============================================================
+function renderRiskRadar() {
+  const container = document.getElementById('risk-radar-list');
+  if (!container || !appState.trends) return;
+  
+  const riskData = calculateRiskVelocity(appState.trends);
+  
+  // Pick top 4-5 interesting risks
+  const topRisks = riskData
+    .filter(r => r.feature !== 'general')
+    .sort((a, b) => b.velocity - a.velocity)
+    .slice(0, 5);
+
+  container.innerHTML = topRisks.map((risk, i) => {
+    const icon = FEATURE_ICONS[risk.feature] || '📋';
+    let color = '#00cec9'; // stable
+    let status = 'Stable';
+    
+    if (risk.velocity > 0.4) {
+      color = 'var(--critical)';
+      status = 'Accelerating';
+    } else if (risk.velocity > 0.1) {
+      color = 'var(--warning)';
+      status = 'Emerging';
+    }
+
+    return `
+      <div class="risk-item" style="--d: ${i * 0.5}s">
+        <div class="risk-node" style="--c: ${color}; --c-glow: ${color}44">
+          ${icon}
+        </div>
+        <div>
+          <div class="risk-label">${capitalize(risk.feature)}</div>
+          <div class="risk-status" style="background: ${color}">${status}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function calculateRiskVelocity(trends) {
+  const results = [];
+  
+  for (const [feature, days] of Object.entries(trends)) {
+    const sortedDays = Object.keys(days).sort();
+    if (sortedDays.length < 2) continue;
+    
+    const recent = sortedDays.slice(-3); // last 3 days
+    const totalNeg = recent.reduce((sum, d) => sum + days[d].negative, 0);
+    const avgNeg = totalNeg / recent.length;
+    
+    // Simple slope: latest day vs average of recent
+    const latestDay = sortedDays[sortedDays.length - 1];
+    const prevDay = sortedDays[sortedDays.length - 2];
+    
+    const velocity = (days[latestDay].negative - days[prevDay].negative) / (days[prevDay].negative || 1);
+    
+    results.push({
+      feature,
+      velocity: velocity,
+      volume: totalNeg
+    });
+  }
+  
+  return results;
+}

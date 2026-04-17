@@ -281,7 +281,33 @@
         </div>
       </div>
 
-      <!-- Row 4: Processed Reviews -->
+      <!-- Row 4: Horizon Risk Radar (Predictive) -->
+      <div class="dashboard-grid">
+        <div class="dash-col-12">
+          <div class="dash-card glass-card radar-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>📡</span> Horizon Risk Radar (7-Day Predictive)</span>
+              <span class="dash-card-badge" style="background: rgba(0, 206, 201, 0.15); color: #00cec9;">PROACTIVE</span>
+            </div>
+            <div class="radar-container">
+              <div class="radar-scan"></div>
+              <div class="radar-grid-rings">
+                <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+              </div>
+              <div class="radar-content" id="risk-radar-list">
+                <!-- Predictive risk items will be injected here -->
+              </div>
+            </div>
+            <div class="radar-legend">
+              <div class="legend-pill" style="--c: var(--critical)">Accelerating</div>
+              <div class="legend-pill" style="--c: var(--warning)">Emerging</div>
+              <div class="legend-pill" style="--c: #00cec9">Stable</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 5: Processed Reviews -->
       <div class="dashboard-grid">
         <div class="dash-col-12">
           <div class="dash-card glass-card">

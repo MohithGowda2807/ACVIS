@@ -33,9 +33,16 @@ Use this guide to structure your response to judges. Your goal is to prove **ACV
 
 **Highlight:** The **Recovery Potential** stat.
 
+5. **FUTURE PREDICTION: Horizon Risk Radar**:
+   - Scroll to the bottom of the dashboard.
+   - Say: *"This is our crystal ball. While other tools tell you what happened, the Horizon Risk Radar tells you what WILL happen. It uses sentiment velocity to find features like 'Connectivity' which are trending poorly today and will likely spike tomorrow if not addressed."*
+
 ---
 
 ## 🛡️ Defending the "Judge Traps" (Q&A)
+
+**Q: How is 'Future Prediction' different from 'Trends'?**
+**A:** Trends show you historical spikes (what is already broken). The Risk Radar analyzes the *acceleration* (velocity) of negative feedback. It catches issues that have only 2-3 negative reviews today but are growing at 200%—allowing us to stop the spike before it ever hits the live dashboard alerts.
 
 **Q: How do you handle sarcasm?**
 **A:** Our NLP Engine uses pattern flipping. For example, if a user says "Great, another crash", the system detects the "Great" + "Crash" proximity and flips the sentiment to negative.
@@ -43,11 +50,8 @@ Use this guide to structure your response to judges. Your goal is to prove **ACV
 **Q: Why not just use OpenAI/ChatGPT?**
 **A:** Speed and privacy. ACVIS is designed to run locally or in secure clusters without sending sensitive customer data to 3rd party LLMs for every single review. Our rule-based NLP is 10x faster for real-time spikes.
 
-**Q: How is the Revenue Loss calculated?**
-**A:** We use a Churn Impact Model: (Rating Delta * 5% Multiplier) * ARPU * Total Users. It maps emotional sentiment to actual financial liability.
-
 **Q: What about competitors?**
-**A:** As just shown, we have a built-in Benchmarking Engine. We can ingest competitor data to tell you exactly where they are beating you in the market.
+**A:** We have a built-in Benchmarking Engine. We can ingest competitor data to tell you exactly where they are beating you in the market.
 
 ---
 
