@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ACVIS — Autonomous Customer Voice Intelligence System. Transform customer reviews into real-time insights, predictive signals, and actionable business decisions.">
+  <meta name="theme-color" content="#0a0e1a">
+  <title>ACVIS — Customer Voice Intelligence</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- ═══════ Navbar ═══════ -->
+    <nav class="navbar">
+      <div class="logo">
+        <div class="logo-icon">🧠</div>
+        <div>
+          <div class="logo-text">ACVIS</div>
+          <div class="logo-subtitle">Voice Intelligence System</div>
+        </div>
+      </div>
+      <div class="nav-status">
+        <span class="status-dot"></span>
+        <span>System Online</span>
+      </div>
+    </nav>
+
+    <!-- ═══════ Hero ═══════ -->
+    <section class="hero">
+      <div class="hero-badge">🚀 AI-Powered Decision Intelligence</div>
+      <h1>Transform <span>Customer Voice</span><br>Into Business Action</h1>
+      <p class="hero-desc">
+        ACVIS analyzes customer reviews to extract feature-level sentiment, detect complaint spikes, predict rating shifts, and generate actionable business recommendations — all in real time.
+      </p>
+    </section>
+
+    <!-- ═══════ Stats Bar ═══════ -->
+    <div class="stats-bar">
+      <div class="stat-card glass-card">
+        <div class="stat-value" id="stat-raw">0</div>
+        <div class="stat-label">Reviews Ingested</div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-value" id="stat-processed">0</div>
+        <div class="stat-label">Processed</div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-value" id="stat-features">0</div>
+        <div class="stat-label">Features Detected</div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-value" id="stat-alerts">0</div>
+        <div class="stat-label">Alerts</div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-value" id="stat-actions">0</div>
+        <div class="stat-label">Actions Generated</div>
+      </div>
+    </div>
+
+    <!-- ═══════ Pipeline Visualizer ═══════ -->
+    <section class="pipeline-section glass-card">
+      <div class="pipeline-track">
+        <div class="pipeline-step" id="pipe-0">
+          <div class="step-icon">📥</div>
+          <span class="step-label">Ingest</span>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-step" id="pipe-1">
+          <div class="step-icon">🧹</div>
+          <span class="step-label">Preprocess</span>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-step" id="pipe-2">
+          <div class="step-icon">🧠</div>
+          <span class="step-label">NLP Engine</span>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-step" id="pipe-3">
+          <div class="step-icon">📊</div>
+          <span class="step-label">Insights</span>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-step" id="pipe-4">
+          <div class="step-icon">🎯</div>
+          <span class="step-label">Decisions</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ Input Section ═══════ -->
+    <section class="input-section">
+      <div class="input-container glass-card">
+        <div class="section-header">
+          <h2 class="section-title"><span class="icon">📝</span> Input Reviews</h2>
+        </div>
+
+        <div class="input-tabs">
+          <button class="input-tab active" data-panel="panel-text">✍️ Text Input</button>
+          <button class="input-tab" data-panel="panel-json">{ } JSON Input</button>
+          <button class="input-tab" data-panel="panel-sample">📦 Sample Data</button>
+        </div>
+
+        <div id="panel-text" class="input-panel active">
+          <textarea class="review-textarea" id="review-text-input"
+            placeholder="Enter reviews (one per line):&#10;&#10;Battery drains too fast after the latest update. Camera is amazing though!&#10;Love the camera quality, photos are crisp and vibrant.&#10;UI is smooth and responsive. Great design overall.&#10;App crashes frequently after the new update, very frustrating!"></textarea>
+        </div>
+
+        <div id="panel-json" class="input-panel">
+          <textarea class="json-textarea" id="review-json-input"
+            placeholder='[&#10;  {&#10;    "text": "Battery drains fast after update",&#10;    "rating": 2,&#10;    "timestamp": "2026-04-15T10:00:00Z",&#10;    "source": "playstore"&#10;  },&#10;  {&#10;    "text": "Camera is absolutely incredible!",&#10;    "rating": 5,&#10;    "source": "amazon"&#10;  }&#10;]'></textarea>
+        </div>
+
+        <div id="panel-sample" class="input-panel">
+          <div style="padding: 24px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">55 Sample Reviews Ready</div>
+            <div style="font-size: 13px; color: var(--text-secondary); max-width: 480px; margin: 0 auto; line-height: 1.6;">
+              Pre-loaded dataset spanning 7 days with realistic reviews covering battery, camera, performance, UI, display, and more. Includes a <strong style="color: var(--negative);">battery complaint spike</strong> on Day 5 to demonstrate trend detection and alert generation.
+            </div>
+          </div>
+        </div>
+
+        <div class="input-actions">
+          <button class="btn btn-primary" id="btn-analyze">
+            <span>⚡</span> Run Analysis
+          </button>
+          <button class="btn btn-secondary" id="btn-load-sample">
+            <span>📦</span> Load Sample Data
+          </button>
+          <button class="btn btn-ghost" id="btn-clear">
+            <span>🗑️</span> Clear
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ Dashboard ═══════ -->
+    <div id="dashboard" class="dashboard">
+
+      <!-- Row 1: Feature Sentiment + Donut Charts -->
+      <div class="dashboard-grid">
+        <div class="dash-col-8">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🧬</span> Feature-Level Sentiment</span>
+              <span class="dash-card-badge" style="background: var(--positive-bg); color: var(--positive);">CORE</span>
+            </div>
+            <div class="feature-list" id="feature-sentiment-list"></div>
+          </div>
+        </div>
+        <div class="dash-col-4">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🍩</span> Sentiment Overview</span>
+            </div>
+            <div class="donut-grid" id="donut-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Trend Chart + Alerts -->
+      <div class="dashboard-grid">
+        <div class="dash-col-8">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>📈</span> Negative Sentiment Trends</span>
+              <span class="dash-card-badge" style="background: var(--negative-bg); color: var(--negative);">LIVE</span>
+            </div>
+            <div class="trend-chart-container">
+              <canvas id="trend-canvas"></canvas>
+            </div>
+            <div class="trend-legend" id="trend-legend"></div>
+          </div>
+        </div>
+        <div class="dash-col-4">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🚨</span> Alerts</span>
+              <span class="dash-card-badge" style="background: var(--critical-bg); color: var(--critical);" id="alert-count-badge">0</span>
+            </div>
+            <div class="alerts-list" id="alerts-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Actions + Predictions + Emotions -->
+      <div class="dashboard-grid">
+        <div class="dash-col-6">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🎯</span> Action Recommendations</span>
+              <span class="dash-card-badge" style="background: rgba(108,92,231,0.15); color: var(--accent-secondary);">ENGINE</span>
+            </div>
+            <div class="actions-list" id="actions-list"></div>
+          </div>
+        </div>
+        <div class="dash-col-3" style="grid-column: span 3;">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>🔮</span> Predictions</span>
+            </div>
+            <div id="predictions-content"></div>
+          </div>
+        </div>
+        <div class="dash-col-3" style="grid-column: span 3;">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>💭</span> Emotion Map</span>
+            </div>
+            <div id="emotions-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Processed Reviews -->
+      <div class="dashboard-grid">
+        <div class="dash-col-12">
+          <div class="dash-card glass-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title"><span>📄</span> Processed Reviews</span>
+              <span class="dash-card-badge" style="background: var(--bg-tertiary); color: var(--text-secondary);">LATEST 20</span>
+            </div>
+            <div class="review-cards-grid" id="reviews-grid"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════ Footer ═══════ -->
+    <footer class="footer">
+      <p>Built with 🧠 by <span>ACVIS</span> — Autonomous Customer Voice Intelligence System</p>
+      <p style="margin-top: 6px; font-size: 11px;">Transforming "What users feel" → "What the business should do next"</p>
+    </footer>
+
+  </div>
+
+  <!-- ═══════ Loading Overlay ═══════ -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Processing Pipeline...</div>
+    <div class="loading-step" id="loading-step">Initializing...</div>
+  </div>
+
+  <!-- ═══════ Toast Container ═══════ -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
