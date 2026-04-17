@@ -47,15 +47,21 @@ POSITIVE_WORDS = [
     "sleek", "elegant", "top-notch", "exceptional", "flawless",
 ]
 
+NEG_STRICT = [
+    "worst", "terrible", "horrible", "awful", "trash", "garbage", "pathetic", 
+    "disgusting", "useless", "waste", "broken", "dead", "scam", "avoid", "fraud",
+    "stolen", "unusable", "fails", "fail"
+]
+
 NEGATIVE_WORDS = [
-    "bad", "poor", "worst", "terrible", "horrible", "hate", "awful",
-    "slow", "lag", "hang", "crash", "freeze", "drain", "dead", "broke",
-    "disappointed", "useless", "waste", "overpriced", "ugly", "cheap",
+    "bad", "poor", "hate", "slow", "lag", "hang", "crash", "freeze", "drain", 
+    "disappointed", "underwhelmed", "unhappy", "overpriced", "ugly", "cheap",
     "blurry", "dim", "weak", "noisy", "bloated", "heavy", "annoying",
-    "frustrating", "pathetic", "mediocre", "regret", "refund", "issue",
-    "problem", "defect", "malfunction", "unresponsive", "broken",
-    "glitch", "stutter", "overheat", "overheating", "fails", "unusable",
-    "trash",
+    "frustrating", "mediocre", "regret", "refund", "issue", "problems",
+    "problem", "defect", "malfunction", "unresponsive", "glitch", "stutter", 
+    "overheat", "overheating", "broken", "unreliable", "slowly", "wasted",
+    "stupid", "idiotic", "dumb", "useless", "pointless", "disappointing",
+    "poorly", "low", "minimal", "none", "zero", "nothing", "don't buy", "avoid"
 ]
 
 SARCASM_PATTERNS = [
@@ -206,29 +212,53 @@ def extract_aspects(text: str) -> List[str]:
     return found if found else ["general"]
 
 
-def score_sentiment(text: str) -> str:
-    # 1. Use actual ML model if available
+def score_sentiment(text: str, rating: Optional[float] = None) -> str:
+    """
+    Hybrid Sentiment Engine:
+    1. Rating Priority: If rating is 1 or 2 -> Negative. If 4 or 5 -> Positive.
+    2. Strict Keyword Override: If text contains critical negative words, it's Negative.
+    3. Keyword Score: Weighted word counting.
+    4. Sarcasm Check
+    5. ML Model Fallback (with weight)
+    """
+    # 1. Numerical Rating Correlation
+    if rating is not None:
+        if rating <= 2: return "negative"
+        if rating >= 4: return "positive"
+
+    text_lower = text.lower()
+    
+    # 2. Strict Negative Keywords (Bypass ML)
+    if any(w in text_lower for w in NEG_STRICT):
+        return "negative"
+        
+    # 3. Keyword Scoring
+    # Strip punctuation from words for dictionary matching
+    words = [re.sub(r"[.,!?-]", "", w) for w in text_lower.split()]
+    pos = sum(1.5 for w in words if w in POSITIVE_WORDS)
+    neg = sum(1.5 for w in words if w in NEGATIVE_WORDS)
+    
+    # 4. Sarcasm Adjustment
+    is_sarcastic = any(p.search(text_lower) for p in SARCASM_PATTERNS)
+    if is_sarcastic:
+        neg += 2 # Add weight to negative
+        pos = 0
+
+    # 5. ML Model Logic (Only if keywords are not definitive)
+    ml_sentiment = None
     if sentiment_model:
         try:
-            pred = sentiment_model.predict([text])[0]
-            if pred == 1:
-                return "positive"
-            else:
-                return "negative"
+            pred = sentiment_model.predict([text_lower])[0]
+            ml_sentiment = "positive" if pred == 1 else "negative"
+            # Add to scores instead of absolute return
+            if ml_sentiment == "positive": pos += 1
+            else: neg += 1
         except Exception:
-            pass # Fall back to heuristics if model fails
+            pass
 
-    # 2. Fall back to heuristic rule-based logic
-    words = text.split()
-    pos = sum(1 for w in words if w in POSITIVE_WORDS)
-    neg = sum(1 for w in words if w in NEGATIVE_WORDS)
-    is_sarcastic = any(p.search(text) for p in SARCASM_PATTERNS)
-    if is_sarcastic:
-        pos, neg = neg, pos
-    if pos > neg:
-        return "positive"
-    if neg > pos:
-        return "negative"
+    # Final Decision
+    if neg > pos: return "negative"
+    if pos > neg: return "positive"
     return "neutral"
 
 
@@ -273,11 +303,18 @@ def detect_fake_reviews(processed: List[dict]) -> List[dict]:
             seen_texts[text] = 1
             
         # 2. Bot Pattern (Short & Extreme)
-        sentiment = score_sentiment(text)
+        sentiment = score_sentiment(text, r.get("rating"))
         aspects = extract_aspects(text)
-        if not is_fake and len(text) < 15 and sentiment != "neutral" and aspects == ["general"]:
-            is_fake = True
-            reason = f"Bot pattern: Extremely short {sentiment} review"
+        
+        # Loosened Bot Pattern criteria:
+        # - Review must be extremely short (< 10 chars)
+        # - AND have no specific aspects (general)
+        # - AND either be a duplicate OR have excessive symbols
+        if not is_fake and len(text) < 10 and aspects == ["general"]:
+            has_other_signal = re.search(r"[!$#%^&*?]{2,}", orig) or text.count(' ') < 1
+            if has_other_signal:
+                is_fake = True
+                reason = "Bot pattern: Low information density"
             
         # 3. Spam Pattern (Symbols, Repetition, Gibberish)
         if not is_fake:
@@ -319,8 +356,10 @@ def analyze_all(processed_reviews: List[dict]) -> List[dict]:
     
     for r in processed_reviews:
         text = r["clean_text"]
+        rating = r.get("rating")
         aspects = extract_aspects(text)
-        aspect_sentiment = {a: score_sentiment(text) for a in aspects}
+        sentiment = score_sentiment(text, rating) # Passed rating here
+        aspect_sentiment = {a: sentiment for a in aspects}
         emotion = detect_emotion(text)
         keywords = extract_keywords(text)
         fake_info = fake_map.get(r["review_id"], {"is_fake": False, "fake_reason": None})
@@ -333,7 +372,7 @@ def analyze_all(processed_reviews: List[dict]) -> List[dict]:
             "keywords": keywords,
             "is_fake": fake_info["is_fake"],
             "fake_reason": fake_info["fake_reason"],
-            "rating": r.get("rating"),
+            "rating": rating,
             "timestamp": r.get("timestamp"),
             "source": r.get("source"),
         })
