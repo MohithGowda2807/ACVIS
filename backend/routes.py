@@ -57,9 +57,19 @@ def _load_amazon_reviews(limit: int = 500) -> list:
     """Load reviews from Amazon Reviews 2023 sample JSON."""
     import uuid
 
-    # Try Amazon Reviews 2023 sample first
-    json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "amazon_reviews_sample.json")
-    if os.path.exists(json_path):
+    # Try Amazon Reviews 2023 sample first (check multiple locations for deployment compatibility)
+    search_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "amazon_reviews_sample.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "amazon_reviews_sample.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "amazon_reviews_sample.json"),
+    ]
+    json_path = None
+    for p in search_paths:
+        if os.path.exists(p):
+            json_path = p
+            break
+
+    if json_path:
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
