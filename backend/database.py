@@ -209,25 +209,6 @@ def save_reviews(reviews: list[dict]):
     except Exception as e:
         logger.warning(f"Failed to bulk save reviews: {e}")
 
-def save_ai_outputs(outputs: list[dict]):
-    if not outputs: return
-    try:
-        ai_outputs.bulk_write(
-            [__import__("pymongo").UpdateOne({"review_id": o["review_id"]}, {"$set": o}, upsert=True) for o in outputs]
-        )
-    except Exception as e:
-        logger.warning(f"Failed to bulk save ai_outputs: {e}")
-
-def save_actions(actions_list: list[dict]):
-    if not actions_list: return
-    try:
-        # Separate alerts from standard actions
-        alerts = [a for a in actions_list if a.get("priority") in ("critical", "high", "warning", "medium")]
-        doc = {"actions": actions_list, "alerts": alerts}
-        actions_col.replace_one({}, doc, upsert=True)
-    except Exception as e:
-        logger.warning(f"Failed to save actions/alerts: {e}")
-
 def save_insights(insights_data: dict):
     if not insights_data: return
     try:

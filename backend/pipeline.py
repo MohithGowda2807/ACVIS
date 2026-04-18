@@ -262,12 +262,8 @@ def run_pipeline(raw_reviews: list[dict]) -> dict:
 
     timings["total_ms"] = _ms(total_t0)
 
-    # Persist reviews and generated data
-    from backend.database import save_reviews, save_ai_outputs, save_actions, save_insights
+    # Persist reviews
     save_reviews(processed)
-    save_ai_outputs(normalized)
-    save_actions(action_list)
-    save_insights(aggregated)
 
     return {
         "status": "success",

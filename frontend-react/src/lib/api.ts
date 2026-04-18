@@ -27,7 +27,6 @@ export const api = {
 
   getInsights: () => request('/insights'),
   getFeatures: () => request('/features'),
-  getReviews: () => request('/reviews'),
   getAlerts: () => request('/alerts'),
   getActions: () => request('/actions'),
   getTrends: () => request('/trends'),
