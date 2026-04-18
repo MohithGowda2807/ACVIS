@@ -134,7 +134,9 @@ def analyze_batch(reviews: list[dict], client: Optional[Groq] = None) -> list[di
         
         # If rate limited and we have a fallback key, try the fallback key with 70b
         if fallback_api_key and "429" in str(e) and fallback_api_key != api_key:
-            logger.info("Rate limit hit. Switching to fallback API key...")
+            logger.warning("Rate limit hit. Switching to fallback API key permanently for this session.")
+            # Set it globally so subsequent batches skip the exhausted primary key
+            os.environ["GROQ_API_KEY"] = fallback_api_key
             try:
                 fallback_client = Groq(api_key=fallback_api_key)
                 return _call_groq(fallback_client, "llama-3.3-70b-versatile", reviews)
@@ -157,8 +159,7 @@ def analyze_all_reviews(reviews: list[dict], batch_size: int = 10) -> list[dict]
     Returns results in the same order as input.
     """
     api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_FALLBACK_API_KEY")
-    client = Groq(api_key=api_key) if api_key else None
-    if not client:
+    if not api_key:
         logger.warning("No GROQ_API_KEY set — using keyword fallback for all reviews")
         return [_keyword_fallback(r) for r in reviews]
 
@@ -166,7 +167,8 @@ def analyze_all_reviews(reviews: list[dict], batch_size: int = 10) -> list[dict]
     for i in range(0, len(reviews), batch_size):
         batch = reviews[i:i + batch_size]
         t0 = time.time()
-        batch_results = analyze_batch(batch, client)
+        # Do not pass a pre-instantiated client, allow analyze_batch to use the latest env key
+        batch_results = analyze_batch(batch, None)
         elapsed = round((time.time() - t0) * 1000)
         logger.info(f"NLP batch {i//batch_size + 1}: {len(batch)} reviews → {elapsed}ms")
 
