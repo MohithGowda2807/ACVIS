@@ -128,7 +128,8 @@ def _load_amazon_reviews(limit: int = 500) -> list:
 @router.post("/api/analyze")
 async def analyze(data: ReviewInput, user=Depends(get_current_user)):
     try:
-        reviews_to_process = data.reviews or []
+        raw_reviews = data.reviews or []
+        reviews_to_process = [r.model_dump() if hasattr(r, "model_dump") else dict(r) for r in raw_reviews]
         if data.use_csv:
             reviews_to_process = _load_amazon_reviews(500)
 

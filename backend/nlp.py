@@ -120,15 +120,30 @@ def analyze_batch(reviews: list[dict], client: Optional[Groq] = None) -> list[di
     Analyze a batch of up to 10 reviews using Groq.
     Falls back to llama-3.1-8b-instant on rate limit, then keyword fallback.
     """
+    api_key = os.getenv("GROQ_API_KEY")
+    fallback_api_key = os.getenv("GROQ_FALLBACK_API_KEY")
+    
     if client is None:
-        api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_FALLBACK_API_KEY")
-        client = Groq(api_key=api_key)
+        client = Groq(api_key=api_key or fallback_api_key)
 
     try:
         logger.debug(f"Calling Groq (llama-3.3-70b-versatile) for {len(reviews)} reviews")
         return _call_groq(client, "llama-3.3-70b-versatile", reviews)
     except Exception as e:
-        logger.warning(f"Primary model failed: {e} — trying fallback model")
+        logger.warning(f"Primary model/key failed: {e}")
+        
+        # If rate limited and we have a fallback key, try the fallback key with 70b
+        if fallback_api_key and "429" in str(e) and fallback_api_key != api_key:
+            logger.info("Rate limit hit. Switching to fallback API key...")
+            try:
+                fallback_client = Groq(api_key=fallback_api_key)
+                return _call_groq(fallback_client, "llama-3.3-70b-versatile", reviews)
+            except Exception as e_fall:
+                logger.warning(f"Fallback key also failed on 70b: {e_fall}")
+                client = fallback_client # use this client for 8b fallback
+        
+        # Try 8b model on whichever client we ended up with
+        logger.warning("Trying fallback model (llama-3.1-8b-instant)")
         try:
             return _call_groq(client, "llama-3.1-8b-instant", reviews)
         except Exception as e2:
