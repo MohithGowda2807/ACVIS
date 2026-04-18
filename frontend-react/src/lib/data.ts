@@ -187,6 +187,7 @@ export interface AIOutput {
   review_id: string;
   aspects: string[];
   aspect_sentiment: Record<string, string>;
+  aspect_confidence: Record<string, number>;
   emotion: string;
   keywords: string[];
   rating: number | null;

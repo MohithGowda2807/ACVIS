@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/appStore';
 import { parseTextInput, parseJsonInput } from '@/lib/engine';
+import { capitalize } from '@/lib/utils';
 import { SAMPLE_REVIEWS, SAMPLE_COMPETITOR_REVIEWS } from '@/lib/data';
 import { Upload, Play, Trash2, Database, Filter, Brain, BarChart3, Target, Box, Users } from 'lucide-react';
 
@@ -18,7 +19,7 @@ export default function Analyze() {
   const [tab, setTab] = useState<typeof TABS[number]>('Text');
   const [textInput, setTextInput] = useState('');
   const [jsonInput, setJsonInput] = useState('');
-  const { isProcessing, pipelineStep, pipelineLabel, runPipeline, runSamplePipeline, runCompetitorPipeline, resetState } = useAppStore();
+  const { isProcessing, pipelineStep, pipelineLabel, runPipeline, runSamplePipeline, runCompetitorPipeline, resetState, aiOutputs, processedReviews } = useAppStore();
 
   const handleAnalyze = async () => {
     if (isProcessing) return;
@@ -122,6 +123,41 @@ export default function Analyze() {
               <Trash2 className="w-4 h-4" /> Clear
             </motion.button>
           </div>
+
+          {/* Quick Result Output */}
+          {tab === 'Text' && !isProcessing && aiOutputs.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+              className="mt-6 pt-6 border-t border-gray-100"
+            >
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Target className="w-4 h-4 text-gray-400" /> NLP Output
+              </h4>
+              <div className="space-y-3">
+                {aiOutputs.map((out, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm">
+                    <p className="font-medium text-gray-800 mb-2">"{processedReviews.find(r => r.review_id === out.review_id)?.original_text}"</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(out.aspect_sentiment).map(([aspect, sentiment]) => {
+                        const prob = out.aspect_confidence?.[aspect] || 0.5;
+                        const probPercent = Math.round(prob * 100);
+                        return (
+                          <span key={aspect} className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 ${
+                            sentiment === 'positive' ? 'bg-green-100 text-green-700' :
+                            sentiment === 'negative' ? 'bg-red-100 text-red-700' :
+                            'bg-gray-200 text-gray-700'
+                          }`}>
+                            {capitalize(aspect)}: {capitalize(sentiment)}
+                            <span className="opacity-75 text-[10px]">({probPercent}%)</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Pipeline Status */}

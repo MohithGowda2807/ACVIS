@@ -161,6 +161,7 @@ export function analyzeAll(processedReviews: ProcessedReview[]): AIOutput[] {
       review_id: r.review_id,
       aspects,
       aspect_sentiment: aspectSentiment,
+      aspect_confidence: {},
       emotion,
       keywords,
       rating: r.rating,

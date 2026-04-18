@@ -1,12 +1,27 @@
+"""
+database.py — MongoDB + Redis cache for ACVIS.
+
+Merge strategy:
+  - Team's full InMemoryCollection fallback (kept intact)
+  - Team's ensure_db_setup() + index creation (kept intact)
+  - Our Redis cache (cache_get / cache_set / cache_key) added on top
+  - Our load_insights() helper added for routes.py
+"""
+
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
 from pathlib import Path
 import os
 import sys
+import json
+import hashlib
+import logging
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().with_name(".env"))
 
+logger = logging.getLogger("acvis.database")
 MONGO_URI = os.getenv("MONGO_URI")
 
 
@@ -22,15 +37,11 @@ class InMemoryCursor:
         else:
             field = key_or_list
             order = direction or 1
-
         reverse = (order == -1)
-        
         try:
-            # Simple sorting by field, handling missing values
             self._docs.sort(key=lambda x: x.get(field, ""), reverse=reverse)
         except Exception:
             pass
-            
         return self
 
     def __iter__(self):
@@ -52,7 +63,6 @@ class InMemoryCollection:
         self._docs: list[dict] = []
         self._counter = 0
 
-    # --- write ---
     def insert_one(self, doc: dict):
         self._counter += 1
         doc.setdefault("_id", self._counter)
@@ -60,14 +70,12 @@ class InMemoryCollection:
 
         class _Result:
             inserted_id = doc["_id"]
-
         return _Result()
 
     def insert_many(self, docs: list[dict]):
         for d in docs:
             self.insert_one(d)
 
-    # --- read ---
     def find_one(self, filter: dict | None = None, projection: dict | None = None):
         for doc in self._docs:
             if self._matches(doc, filter or {}):
@@ -75,18 +83,14 @@ class InMemoryCollection:
         return None
 
     def find(self, filter: dict | None = None, projection: dict | None = None):
-        results = []
-        for doc in self._docs:
-            if self._matches(doc, filter or {}):
-                results.append(self._project(doc, projection))
-        return InMemoryCursor(results)
+        results = [d for d in self._docs if self._matches(d, filter or {})]
+        return InMemoryCursor([self._project(d, projection) for d in results])
 
     def count_documents(self, filter: dict | None = None):
         if not filter:
             return len(self._docs)
         return sum(1 for d in self._docs if self._matches(d, filter))
 
-    # --- write (update / delete) ---
     def update_one(self, filter: dict, update: dict, upsert: bool = False):
         for doc in self._docs:
             if self._matches(doc, filter):
@@ -94,8 +98,20 @@ class InMemoryCollection:
                     doc.update(update["$set"])
                 return
         if upsert and "$set" in update:
-            new_doc = {**filter, **update["$set"]}
-            self.insert_one(new_doc)
+            self.insert_one({**filter, **update["$set"]})
+
+    def replace_one(self, filter: dict, replacement: dict, upsert: bool = False):
+        for i, doc in enumerate(self._docs):
+            if self._matches(doc, filter):
+                self._docs[i] = replacement
+                return
+        if upsert:
+            self.insert_one(replacement)
+
+    def bulk_write(self, operations):
+        for op in operations:
+            if hasattr(op, "_filter") and hasattr(op, "_doc"):
+                self.update_one(op._filter, {"$set": op._doc}, upsert=True)
 
     def delete_one(self, filter: dict):
         for i, doc in enumerate(self._docs):
@@ -106,11 +122,9 @@ class InMemoryCollection:
     def delete_many(self, filter: dict):
         self._docs = [d for d in self._docs if not self._matches(d, filter)]
 
-    # --- indexes (no-op) ---
     def create_index(self, *args, **kwargs):
-        pass
+        pass  # No-op for in-memory
 
-    # --- helpers ---
     @staticmethod
     def _matches(doc: dict, filter: dict) -> bool:
         for k, v in filter.items():
@@ -127,9 +141,8 @@ class InMemoryCollection:
         for key, include in projection.items():
             if key == "_id":
                 continue
-            if include:
-                if key in doc:
-                    out[key] = doc[key]
+            if include and key in doc:
+                out[key] = doc[key]
         if not exclude_id and "_id" in doc:
             out["_id"] = doc["_id"]
         return out
@@ -150,7 +163,8 @@ class InMemoryDB:
         return {"ok": 1}
 
 
-# ─── Connect to real MongoDB or fall back to in-memory ───
+# ─── Connect to real MongoDB or fall back to in-memory ────────────────────
+USE_MONGO = False
 if MONGO_URI:
     try:
         client = MongoClient(
@@ -162,7 +176,6 @@ if MONGO_URI:
             retryReads=True,
             maxPoolSize=10,
         )
-        # We don't ping here anymore, it's done in ensure_db_setup()
         USE_MONGO = True
         db = client["acvis"]
         print("[OK] MongoDB client initialized (lazy connection)")
@@ -170,25 +183,46 @@ if MONGO_URI:
         print(f"[WARNING] MongoDB initialization failed: {e}")
         db = InMemoryDB()
 else:
+    print("[INFO] No MONGO_URI — using in-memory database")
     db = InMemoryDB()
 
-# Collections
-raw_reviews = db["raw_reviews"]
-processed_reviews = db["processed_reviews"]
-ai_outputs = db["ai_outputs"]
-insights = db["insights"]
-actions_col = db["actions"]
-users = db["users"]
-tickets = db["tickets"]
+# Collections (direct references — usable by routes.py, chatbot.py, pipeline.py)
+raw_reviews        = db["raw_reviews"]
+processed_reviews  = db["processed_reviews"]
+ai_outputs         = db["ai_outputs"]
+insights           = db["insights"]
+actions_col        = db["actions"]
+users              = db["users"]
+tickets            = db["tickets"]
 
 _db_initialized = False
 
+def get_db():
+    return db
+
+def save_reviews(reviews: list[dict]):
+    if not reviews: return
+    try:
+        processed_reviews.bulk_write(
+            [__import__("pymongo").UpdateOne({"review_id": r["review_id"]}, {"$set": r}, upsert=True) for r in reviews]
+        )
+    except Exception as e:
+        logger.warning(f"Failed to bulk save reviews: {e}")
+
+def save_insights(insights_data: dict):
+    if not insights_data: return
+    try:
+        insights.replace_one({}, insights_data, upsert=True)
+    except Exception as e:
+        logger.warning(f"Failed to save insights: {e}")
+
+
 def ensure_db_setup():
-    """Run one-time setup (ping and indexes). Only runs once per process."""
+    """Run one-time setup (ping + indexes). Only runs once per process."""
     global _db_initialized
     if _db_initialized:
         return
-    
+
     if USE_MONGO:
         try:
             client.admin.command("ping")
@@ -196,7 +230,6 @@ def ensure_db_setup():
         except Exception as e:
             print(f"[WARNING] Lazy ping failed: {e}")
 
-    # Indexes (no-op for in-memory, lazy for Mongo)
     try:
         raw_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
         processed_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
@@ -206,7 +239,7 @@ def ensure_db_setup():
         tickets.create_index([("user_email", ASCENDING)])
     except Exception as e:
         print(f"[WARNING] Index creation deferred: {e}")
-    
+
     _db_initialized = True
 
 
@@ -217,3 +250,65 @@ def test_connection():
         print("[OK] Database connection verified!")
     else:
         print("[OK] In-memory database ready!")
+
+
+def load_insights() -> Optional[dict]:
+    """Helper for routes.py: load latest insights document."""
+    try:
+        doc = insights.find_one({}, {"_id": 0})
+        return doc
+    except Exception as e:
+        logger.warning(f"Failed to load insights: {e}")
+        return None
+
+
+# ─── Redis Cache (optional — pipeline continues if unavailable) ───────────
+_redis_client = None
+_redis_attempted = False
+
+
+def get_redis():
+    """Try to connect to Redis once; returns None if unavailable."""
+    global _redis_client, _redis_attempted
+    if _redis_attempted:
+        return _redis_client
+    _redis_attempted = True
+    try:
+        import redis
+        host = os.getenv("REDIS_HOST", "localhost")
+        port = int(os.getenv("REDIS_PORT", 6379))
+        r = redis.Redis(host=host, port=port, db=0, socket_connect_timeout=2)
+        r.ping()
+        _redis_client = r
+        logger.info("Redis connected")
+    except Exception as e:
+        logger.info(f"Redis unavailable (non-fatal): {e}")
+        _redis_client = None
+    return _redis_client
+
+
+def cache_key(text: str) -> str:
+    return "acvis:nlp:" + hashlib.md5(text.encode()).hexdigest()
+
+
+def cache_get(text: str) -> Optional[dict]:
+    r = get_redis()
+    if r is None:
+        return None
+    try:
+        val = r.get(cache_key(text))
+        if val:
+            return json.loads(val)
+    except Exception:
+        pass
+    return None
+
+
+def cache_set(text: str, result: dict, ttl_seconds: int = 86400):
+    r = get_redis()
+    if r is None:
+        return
+    try:
+        r.setex(cache_key(text), ttl_seconds, json.dumps(result))
+    except Exception:
+        pass

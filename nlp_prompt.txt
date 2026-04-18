@@ -1,0 +1,233 @@
+    IGNORE CLAUDE, REPLACE CLAUDE WITH GROQ EVERYWHERE.
+You are a senior ML engineer building the NLP intelligence core for ACVIS 
+(AI Customer Voice Intelligence System) — a production-grade platform that 
+transforms raw customer reviews into actionable business decisions.
+
+## YOUR TASK
+Build a complete, production-quality NLP pipeline in Python that:
+1. Takes raw customer review text as input
+2. Extracts product aspects/features mentioned (battery, camera, UI, etc.)
+3. Assigns sentiment per aspect (positive/negative/neutral) with confidence scores
+4. Detects emotion (anger/frustration/satisfaction/neutral)
+5. Detects sarcasm and flips sentiment accordingly
+6. Generates structured JSON output consumed by a decision engine
+
+## TECH STACK (use exactly this)
+- Python 3.11+
+- FastAPI for the API layer
+- - Groq API as the primary NLP engine
+  - Model: llama-3.3-70b-versatile (best accuracy, fast)
+  - Fallback model: llama-3.1-8b-instant (if rate limited)
+  - Use response_format={"type": "json_object"} for structured output
+  - Batch up to 10 reviews per call (Groq has smaller context window)
+  - Groq is extremely fast (~500ms per call) — no async needed
+  - API key in .env as GROQ_API_KEY
+- sentence-transformers (all-MiniLM-L6-v2) for semantic similarity
+  - Use this to normalize extracted aspects to a canonical list
+  - Canonical aspects: battery, camera, performance, ui, display, 
+    audio, build_quality, price, delivery, customer_support
+- langdetect for language detection
+- deep_translator (GoogleTranslator) for non-English → English
+- pymongo for MongoDB storage
+- Redis for caching (cache results by md5 hash of review text)
+
+## PIPELINE ARCHITECTURE
+Build these exact 6 stages as separate Python functions:
+
+### Stage 1: ingest(reviews: list[dict]) → list[dict]
+- Validate schema: review_id, text, rating (optional), timestamp, source
+- Generate UUID if review_id missing
+- Remove duplicates by MD5 hash of text
+- Remove reviews with text < 5 words
+- Return standardized review list
+
+### Stage 2: preprocess(reviews: list[dict]) → list[dict]
+- Lowercase
+- Expand contractions using contractions library
+- Remove URLs, HTML tags, special characters (keep apostrophes)
+- Detect language using langdetect
+- Translate non-English to English using deep_translator
+- Strip slang: maintain a mapping dict of 30+ common slang terms
+- Return cleaned reviews with language field added
+
+### Stage 3: nlp_analyze(reviews: list[dict]) → list[dict]
+This is the core. Use Claude API with this EXACT system prompt:
+
+SYSTEM: You are an expert product analyst. Analyze customer reviews and 
+extract structured intelligence. Always return valid JSON only. 
+No markdown, no explanation.
+
+USER: Analyze these {N} customer reviews. For each review, extract:
+1. aspects: list of product features mentioned (normalize to: battery, 
+   camera, performance, ui, display, audio, build_quality, price, 
+   delivery, customer_support, general)
+2. aspect_sentiment: for each aspect: positive/negative/neutral + 
+   confidence 0.0-1.0
+3. emotion: anger/frustration/satisfaction/neutral
+4. sarcasm_detected: true/false
+5. sarcasm_corrected_sentiment: if sarcasm=true, flip the overall tone
+6. intensity: low/medium/high (how strongly does the user feel)
+7. keywords: top 3 meaningful phrases from the review
+
+Return JSON array with one object per review maintaining the same order.
+Each object: {review_id, aspects, aspect_sentiment: {aspect: {label, 
+confidence}}, emotion, sarcasm_detected, intensity, keywords}
+
+Reviews: [paste batch here as JSON]
+
+- Set temperature=0 for deterministic output
+- Parse response strictly, fallback to empty structure on parse failure
+- Cache results in Redis with 24h TTL
+
+### Stage 4: normalize_aspects(nlp_results: list[dict]) → list[dict]
+- Use sentence-transformers to embed extracted aspect terms
+- Compute cosine similarity against canonical aspect embeddings
+- Map any aspect with similarity > 0.75 to canonical name
+- Example: "battery life" → "battery", "screen" → "display", "lag" → "performance"
+- Store both original and normalized aspect
+
+### Stage 5: aggregate_insights(nlp_results: list[dict]) → dict
+Compute these metrics:
+- feature_sentiment_summary: per aspect → {positive_ratio, negative_ratio, 
+  neutral_ratio, total_mentions, avg_confidence}
+- trend_data: group by day → per aspect → negative count per day
+- spike_detection: for each aspect, compute 3-day moving average.
+  If today_count > avg * 2.0 → spike=True, compute % increase
+- emotion_distribution: count per emotion label
+- sarcasm_rate: % of reviews with sarcasm_detected=True
+- top_keywords: frequency count across all reviews, top 10
+- root_cause: if "update" OR "patch" OR "version" in keywords → 
+  "Recent software update", if "hardware" OR "build" → "Hardware defect"
+- Store results to MongoDB insights collection
+
+### Stage 6: generate_actions(insights: dict) → list[dict]
+Rule-based decision engine — implement ALL 7 rules:
+
+Rule 1 CRITICAL: negative_ratio >= 0.6 AND spike=True
+→ priority=critical, action="Release hotfix within 48 hours"
+→ reason="X% negative + Y% spike in complaints"
+
+Rule 2 HIGH: negative_ratio >= 0.6 (no spike)
+→ priority=high, action="Escalate to product team immediately"  
+→ reason="X% of mentions are negative"
+
+Rule 3 MEDIUM: 0.4 <= negative_ratio < 0.6
+→ priority=medium, action="Schedule investigation sprint"
+→ reason="Moderate negative signal detected"
+
+Rule 4 OPPORTUNITY: positive_ratio >= 0.8
+→ priority=opportunity, action="Feature in next marketing campaign"
+→ reason="X% positive sentiment — clear user strength"
+
+Rule 5 SPIKE_ONLY: spike=True AND negative_ratio < 0.4
+→ priority=high, action="Monitor closely — unusual volume spike"
+→ reason="Complaint volume increased X% without major sentiment shift"
+
+Rule 6 ROOT_CAUSE: root_cause is not None
+→ append to existing action: "Likely cause: {root_cause}"
+
+Rule 7 PREDICTION: using last 7 days trend_data, fit linear regression
+→ predict next 7 days negative_ratio per aspect
+→ if predicted > 0.6 → priority=warning, action="Proactive fix recommended"
+→ include predicted_value and days_to_threshold
+
+Each action object must include:
+{feature, priority, action, reason, root_cause, predicted_trend, timestamp}
+
+## API ENDPOINTS (FastAPI)
+POST /analyze
+  Body: {"reviews": [...]}
+  Triggers full 6-stage pipeline
+  Returns: {status, reviews_processed, insights, actions, pipeline_timing}
+
+GET /insights
+  Returns latest aggregated insights from MongoDB
+
+GET /trends?feature=battery&days=7
+  Returns daily trend data for a specific feature
+
+POST /analyze/single
+  Body: {"text": "...", "rating": 4}
+  Single review quick analysis (useful for live demo)
+
+## ERROR HANDLING
+- If Claude API fails: retry once, then fallback to a keyword-based 
+  classifier using these word lists:
+  NEGATIVE_WORDS = ["terrible","awful","broken","slow","crash","bad",
+  "horrible","worst","drain","fail","disappoint","useless","frustrating"]
+  POSITIVE_WORDS = ["amazing","excellent","great","love","perfect","fast",
+  "smooth","beautiful","outstanding","best","fantastic","brilliant"]
+  Use ratio of positive/negative words for fallback sentiment
+
+- If MongoDB fails: continue pipeline, return results directly without storing
+- If translation fails: process original text, set language_processed=False
+- Log every stage: stage name, input count, output count, time taken (ms)
+
+## PERFORMANCE REQUIREMENTS
+- Process 50 reviews in under 10 seconds
+- Batch Claude API calls (max 20 reviews per call)
+- Cache identical reviews in Redis
+- Load sentence-transformer model once at startup (not per request)
+- Use async FastAPI endpoints
+
+## OUTPUT SCHEMA (final /analyze response)
+{
+  "status": "success",
+  "reviews_processed": 50,
+  "pipeline_timing": {
+    "ingest_ms": 12,
+    "preprocess_ms": 340,
+    "nlp_ms": 4200,
+    "normalize_ms": 180,
+    "aggregate_ms": 45,
+    "actions_ms": 8,
+    "total_ms": 4785
+  },
+  "insights": {
+    "feature_sentiment_summary": {
+      "battery": {
+        "positive_ratio": 0.12,
+        "negative_ratio": 0.74,
+        "neutral_ratio": 0.14,
+        "total_mentions": 34,
+        "avg_confidence": 0.89
+      }
+    },
+    "spike_detected": {"battery": {"spike": true, "increase_percent": 156}},
+    "emotion_distribution": {"anger": 12, "frustration": 28, "satisfaction": 8, "neutral": 2},
+    "sarcasm_rate": 0.06,
+    "top_keywords": ["battery drain", "after update", "camera quality"],
+    "root_cause": {"battery": "Recent software update"}
+  },
+  "actions": [
+    {
+      "feature": "battery",
+      "priority": "critical",
+      "action": "Release hotfix within 48 hours",
+      "reason": "74% negative sentiment + 156% spike in complaints",
+      "root_cause": "Recent software update",
+      "predicted_trend": {"next_7_days": 0.81, "days_to_threshold": 2},
+      "timestamp": "2026-04-18T10:00:00Z"
+    }
+  ]
+}
+
+## DELIVERABLES
+1. pipeline.py — all 6 stage functions
+2. nlp.py — Claude API wrapper with batching + fallback
+3. actions.py — decision engine with all 7 rules
+4. insights.py — aggregation + spike detection + trend prediction
+5. routes.py — FastAPI endpoints
+6. database.py — MongoDB collections + Redis cache
+7. requirements.txt — all dependencies with pinned versions
+8. test_pipeline.py — test with 10 sample reviews covering:
+   - Normal negative review
+   - Sarcastic review ("Oh great, battery died again")
+   - Mixed review (positive camera, negative battery)
+   - Non-English review (Hindi/Kannada)
+   - Short review (< 10 words)
+
+The existing MongoDB URI is in .env as MONGO_URI.
+The Claude API key is in .env as ANTHROPIC_API_KEY.
+Build this as a drop-in replacement for the existing pipeline.py and routes.py.
+Make it production-ready, well-commented, and modular.

@@ -8,30 +8,13 @@ from typing import Dict, List, Any, Optional, Tuple
 import joblib
 import os
 
-try:
-    from langdetect import detect
-except ImportError:
-    detect = None
-
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'sentiment_model.pkl')
-sentiment_model = None
-
-def get_sentiment_model():
-    """Lazy load the sentiment model only when needed."""
-    global sentiment_model
-    if sentiment_model is not None:
-        return sentiment_model
-        
-    if not os.path.exists(MODEL_PATH):
-        return None
-        
-    try:
-        sentiment_model = joblib.load(MODEL_PATH)
-        print(f"[OK] ML model loaded lazily from {MODEL_PATH}")
-    except Exception as e:
-        print(f"[WARNING] Could not lazy-load ML model: {e}")
-        sentiment_model = False # Set to False to signify failed load but attempt finished
-    return sentiment_model
+try:
+    sentiment_model = joblib.load(MODEL_PATH)
+    print(f"[OK] ML model loaded from {MODEL_PATH}")
+except Exception as e:
+    print(f"[WARNING] Could not load ML model: {e}")
+    sentiment_model = None
 
 
 # ─── Aspect Aliases ───
@@ -64,21 +47,15 @@ POSITIVE_WORDS = [
     "sleek", "elegant", "top-notch", "exceptional", "flawless",
 ]
 
-NEG_STRICT = [
-    "worst", "terrible", "horrible", "awful", "trash", "garbage", "pathetic", 
-    "disgusting", "useless", "waste", "broken", "dead", "scam", "avoid", "fraud",
-    "stolen", "unusable", "fails", "fail"
-]
-
 NEGATIVE_WORDS = [
-    "bad", "poor", "hate", "slow", "lag", "hang", "crash", "freeze", "drain", 
-    "disappointed", "underwhelmed", "unhappy", "overpriced", "ugly", "cheap",
+    "bad", "poor", "worst", "terrible", "horrible", "hate", "awful",
+    "slow", "lag", "hang", "crash", "freeze", "drain", "dead", "broke",
+    "disappointed", "useless", "waste", "overpriced", "ugly", "cheap",
     "blurry", "dim", "weak", "noisy", "bloated", "heavy", "annoying",
-    "frustrating", "mediocre", "regret", "refund", "issue", "problems",
-    "problem", "defect", "malfunction", "unresponsive", "glitch", "stutter", 
-    "overheat", "overheating", "broken", "unreliable", "slowly", "wasted",
-    "stupid", "idiotic", "dumb", "useless", "pointless", "disappointing",
-    "poorly", "low", "minimal", "none", "zero", "nothing", "don't buy", "avoid"
+    "frustrating", "pathetic", "mediocre", "regret", "refund", "issue",
+    "problem", "defect", "malfunction", "unresponsive", "broken",
+    "glitch", "stutter", "overheat", "overheating", "fails", "unusable",
+    "trash",
 ]
 
 SARCASM_PATTERNS = [
@@ -124,10 +101,6 @@ SLANG_MAP = {
     "gonna": "going to", "wanna": "want to", "gotta": "got to",
     "kinda": "kind of", "sorta": "sort of",
 }
-
-# Pre-compile regex patterns for massive speedup
-CONTRACTION_RE = re.compile(rf"\b({'|'.join(re.escape(c) for c in CONTRACTIONS.keys())})\b", flags=re.I)
-SLANG_RE = re.compile(rf"\b({'|'.join(re.escape(c) for c in SLANG_MAP.keys())})\b", flags=re.I)
 
 BUSINESS_CONFIG = {
     "total_users": 5_000_000,
@@ -185,91 +158,41 @@ def clean_text(text: str) -> str:
 
 
 def expand_contractions(text: str) -> str:
-    def replace(match):
-        return CONTRACTIONS.get(match.group(0).lower(), match.group(0))
-    return CONTRACTION_RE.sub(replace, text)
+    for c, e in CONTRACTIONS.items():
+        text = re.sub(rf"\b{re.escape(c)}\b", e, text, flags=re.I)
+    return text
 
 
 def map_slang(text: str) -> str:
-    def replace(match):
-        return SLANG_MAP.get(match.group(0).lower(), match.group(0))
-    return SLANG_RE.sub(replace, text)
-
-
-def is_likely_english(text: str) -> bool:
-    """Fast-path heuristic for English detection (250x faster than langdetect)."""
-    if not text: return True
-    # Check ASCII density (90% threshold)
-    sample = text[:250]
-    ascii_chars = sum(1 for c in sample if ord(c) < 128)
-    if ascii_chars / len(sample) < 0.9:
-        return False
-    
-    # Check for common English glue words
-    common_words = {' the ', ' is ', ' and ', ' a ', ' to ', ' in ', ' of ', ' it '}
-    text_lower = ' ' + sample.lower() + ' '
-    return any(word in text_lower for word in common_words)
+    words = text.split()
+    return " ".join(SLANG_MAP.get(w, w) for w in words)
 
 
 def detect_language(text: str) -> str:
-    # 1. Try Fast-Path
-    if is_likely_english(text):
-        return "en"
-    
-    # 2. Fallback to slow langdetect
-    if not detect:
-        return "en"
     try:
-        return detect(text[:250])
+        from langdetect import detect
+        return detect(text)
     except Exception:
         return "en"
 
 
-def preprocess_single(r: dict) -> dict:
-    """Process a single review - targets parallelization"""
-    cleaned = clean_text(r["text"])
-    expanded = expand_contractions(cleaned)
-    mapped = map_slang(expanded)
-    lang = detect_language(mapped)
-    return {
-        "review_id": r["review_id"],
-        "original_text": r["text"],
-        "clean_text": mapped,
-        "language": lang,
-        "rating": r.get("rating"),
-        "timestamp": r.get("timestamp"),
-        "source": r.get("source"),
-    }
-
-
-def analyze_single(r: dict) -> dict:
-    """Analyze a single review - targets parallelization"""
-    text = r["clean_text"]
-    rating = r.get("rating")
-    
-    aspects = extract_aspects(text)
-    aspect_sentiment = {a: score_sentiment(text, rating) for a in aspects}
-    emotion = detect_emotion(text)
-    keywords = extract_keywords(text)
-    
-    return {
-        "review_id": r["review_id"],
-        "aspects": aspects,
-        "aspect_sentiment": aspect_sentiment,
-        "emotion": emotion,
-        "keywords": keywords,
-        "rating": rating,
-        "timestamp": r.get("timestamp"),
-        "source": r.get("source"),
-    }
-
-
 def preprocess_all(raw_reviews: List[dict]) -> List[dict]:
-    return [preprocess_single(r) for r in raw_reviews]
-
-
-def analyze_all(processed: List[dict]) -> List[dict]:
-    return [analyze_single(r) for r in processed]
+    result = []
+    for r in raw_reviews:
+        t = clean_text(r["text"])
+        t = expand_contractions(t)
+        t = map_slang(t)
+        lang = detect_language(t)
+        result.append({
+            "review_id": r["review_id"],
+            "original_text": r["text"],
+            "clean_text": t,
+            "language": lang,
+            "rating": r.get("rating"),
+            "timestamp": r.get("timestamp"),
+            "source": r.get("source"),
+        })
+    return result
 
 
 # ─── 3. NLP Analysis ───
@@ -283,55 +206,42 @@ def extract_aspects(text: str) -> List[str]:
     return found if found else ["general"]
 
 
-def score_sentiment(text: str, rating: Optional[float] = None) -> str:
-    """
-    Hybrid Sentiment Engine:
-    1. Rating Priority: If rating is 1 or 2 -> Negative. If 4 or 5 -> Positive.
-    2. Strict Keyword Override: If text contains critical negative words, it's Negative.
-    3. Keyword Score: Weighted word counting.
-    4. Sarcasm Check
-    5. ML Model Fallback (with weight)
-    """
-    # 1. Numerical Rating Correlation
-    if rating is not None:
-        if rating <= 2: return "negative"
-        if rating >= 4: return "positive"
-
-    text_lower = text.lower()
-    
-    # 2. Strict Negative Keywords (Bypass ML)
-    if any(w in text_lower for w in NEG_STRICT):
-        return "negative"
-        
-    # 3. Keyword Scoring
-    # Strip punctuation from words for dictionary matching
-    words = [re.sub(r"[.,!?-]", "", w) for w in text_lower.split()]
-    pos = sum(1.5 for w in words if w in POSITIVE_WORDS)
-    neg = sum(1.5 for w in words if w in NEGATIVE_WORDS)
-    
-    # 4. Sarcasm Adjustment
-    is_sarcastic = any(p.search(text_lower) for p in SARCASM_PATTERNS)
-    if is_sarcastic:
-        neg += 2 # Add weight to negative
-        pos = 0
-
-    # 5. ML Model Logic (Only if keywords are not definitive)
-    ml_sentiment = None
-    model = get_sentiment_model()
-    if model:
+def score_sentiment(text: str) -> dict:
+    # 1. Use actual ML model if available
+    if sentiment_model:
         try:
-            pred = model.predict([text_lower])[0]
-            ml_sentiment = "positive" if pred == 1 else "negative"
-            # Add to scores instead of absolute return
-            if ml_sentiment == "positive": pos += 1
-            else: neg += 1
-        except Exception:
-            pass
+            pred = sentiment_model.predict([text])[0]
+            proba = sentiment_model.predict_proba([text])[0]
+            confidence = float(max(proba))
+            # Use threshold
+            if confidence < 0.6:
+                return {"sentiment": "neutral", "confidence": confidence}
+            
+            if pred == 1:
+                return {"sentiment": "positive", "confidence": confidence}
+            else:
+                return {"sentiment": "negative", "confidence": confidence}
+        except Exception as e:
+            print(f"Model prediction error: {e}")
+            pass # Fall back to heuristics if model fails
 
-    # Final Decision
-    if neg > pos: return "negative"
-    if pos > neg: return "positive"
-    return "neutral"
+    # 2. Fall back to heuristic rule-based logic
+    words = text.split()
+    pos = sum(1 for w in words if w in POSITIVE_WORDS)
+    neg = sum(1 for w in words if w in NEGATIVE_WORDS)
+    is_sarcastic = any(p.search(text) for p in SARCASM_PATTERNS)
+    if is_sarcastic:
+        pos, neg = neg, pos
+        
+    total = pos + neg
+    if total == 0:
+        return {"sentiment": "neutral", "confidence": 0.5}
+        
+    if pos > neg:
+        return {"sentiment": "positive", "confidence": float(pos/total)}
+    if neg > pos:
+        return {"sentiment": "negative", "confidence": float(neg/total)}
+    return {"sentiment": "neutral", "confidence": 0.5}
 
 
 def detect_emotion(text: str) -> str:
@@ -354,20 +264,25 @@ def analyze_all(processed_reviews: List[dict]) -> List[dict]:
     result = []
     for r in processed_reviews:
         text = r["clean_text"]
-        rating = r.get("rating")
         aspects = extract_aspects(text)
-        sentiment = score_sentiment(text, rating)
-        aspect_sentiment = {a: sentiment for a in aspects}
+        
+        aspect_sentiment = {}
+        aspect_confidence = {}
+        for a in aspects:
+            res = score_sentiment(text)
+            aspect_sentiment[a] = res["sentiment"]
+            aspect_confidence[a] = res["confidence"]
+            
         emotion = detect_emotion(text)
         keywords = extract_keywords(text)
-        
         result.append({
             "review_id": r["review_id"],
             "aspects": aspects,
             "aspect_sentiment": aspect_sentiment,
+            "aspect_confidence": aspect_confidence,
             "emotion": emotion,
             "keywords": keywords,
-            "rating": rating,
+            "rating": r.get("rating"),
             "timestamp": r.get("timestamp"),
             "source": r.get("source"),
         })
