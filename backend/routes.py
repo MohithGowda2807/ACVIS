@@ -131,12 +131,15 @@ async def analyze(data: ReviewInput, user=Depends(get_current_user)):
         raw_reviews = data.reviews or []
         reviews_to_process = [r.model_dump() if hasattr(r, "model_dump") else dict(r) for r in raw_reviews]
         if data.use_csv:
-            reviews_to_process = _load_amazon_reviews(500)
+            # Limit to 30 reviews for fast response (free-tier Groq rate limits)
+            reviews_to_process = _load_amazon_reviews(30)
 
+        logger.info(f"Starting pipeline with {len(reviews_to_process)} reviews")
         result = run_pipeline(reviews_to_process)
+        logger.info(f"Pipeline completed: {result.get('reviews_processed', 0)} reviews, timings={result.get('pipeline_timing', {})}")
         return result
     except Exception as e:
-        logger.error(f"Pipeline error: {e}")
+        logger.error(f"Pipeline error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)}")
 
 

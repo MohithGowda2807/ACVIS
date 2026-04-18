@@ -84,12 +84,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isProcessing: true, pipelineStep: 0, pipelineLabel: 'Sending to backend...' });
 
     try {
-      // Try backend first
-      set({ pipelineStep: 1, pipelineLabel: 'Backend NLP processing...' });
+      // Try backend first — the backend runs all stages (ingest, preprocess, NLP, etc.)
+      set({ pipelineStep: 2, pipelineLabel: 'Analyzing with AI (Llama 3)...' });
       const result = await api.analyze(reviews, useCsv);
 
       if (result && result.status === 'success') {
-        set({ pipelineStep: 3, pipelineLabel: 'Processing results...' });
+        set({ pipelineStep: 4, pipelineLabel: 'Processing results...' });
 
         // Map backend snake_case to frontend camelCase
         const mappedRevenue = result.revenue_impact ? {
@@ -172,11 +172,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Try backend with CSV
     try {
-      set({ pipelineStep: 1, pipelineLabel: 'Sending analyze request to backend...' });
+      set({ pipelineStep: 2, pipelineLabel: 'Analyzing Amazon Reviews with AI (Llama 3)...' });
       const result = await api.analyze([], true);
 
       if (result && result.status === 'success') {
-        set({ pipelineStep: 3, pipelineLabel: 'Processing results...' });
+        set({ pipelineStep: 4, pipelineLabel: 'Processing results...' });
 
         const mappedRevenue = result.revenue_impact ? {
           loss: result.revenue_impact.loss || 0,

@@ -115,42 +115,78 @@ def _call_groq(client: Groq, model: str, batch: list[dict]) -> list[dict]:
     return []
 
 
+# ─── Session-level state to avoid repeated rate-limit failures ───
+_rate_limited_models: set[str] = set()  # models that have hit 429
+_active_api_key: Optional[str] = None   # the key currently in use
+
+
+def _get_client() -> Groq:
+    """Get a Groq client using the best available API key."""
+    global _active_api_key
+    if _active_api_key:
+        return Groq(api_key=_active_api_key)
+    
+    api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_FALLBACK_API_KEY")
+    _active_api_key = api_key
+    return Groq(api_key=api_key)
+
+
+def _try_call(client: Groq, model: str, batch: list[dict]) -> Optional[list[dict]]:
+    """Try a single Groq call. Returns None on rate-limit, raises on other errors."""
+    if model in _rate_limited_models:
+        return None
+    try:
+        return _call_groq(client, model, batch)
+    except Exception as e:
+        err = str(e)
+        if "429" in err:
+            logger.warning(f"Rate limit on {model}: {err[:120]}...")
+            _rate_limited_models.add(model)
+            return None
+        raise
+
+
 def analyze_batch(reviews: list[dict], client: Optional[Groq] = None) -> list[dict]:
     """
     Analyze a batch of up to 10 reviews using Groq.
-    Falls back to llama-3.1-8b-instant on rate limit, then keyword fallback.
+    Uses session-level caching to skip rate-limited models instantly.
+    Cascade: 70b primary key → 70b fallback key → 8b primary key → 8b fallback key → keyword.
     """
+    global _active_api_key
+    
     api_key = os.getenv("GROQ_API_KEY")
     fallback_api_key = os.getenv("GROQ_FALLBACK_API_KEY")
+    all_keys = list(dict.fromkeys(filter(None, [api_key, fallback_api_key])))  # unique, ordered
     
-    if client is None:
-        client = Groq(api_key=api_key or fallback_api_key)
-
-    try:
-        logger.debug(f"Calling Groq (llama-3.3-70b-versatile) for {len(reviews)} reviews")
-        return _call_groq(client, "llama-3.3-70b-versatile", reviews)
-    except Exception as e:
-        logger.warning(f"Primary model/key failed: {e}")
-        
-        # If rate limited and we have a fallback key, try the fallback key with 70b
-        if fallback_api_key and "429" in str(e) and fallback_api_key != api_key:
-            logger.warning("Rate limit hit. Switching to fallback API key permanently for this session.")
-            # Set it globally so subsequent batches skip the exhausted primary key
-            os.environ["GROQ_API_KEY"] = fallback_api_key
+    # Models in preference order
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    
+    for model in models:
+        if model in _rate_limited_models:
+            continue
+        for key in all_keys:
             try:
-                fallback_client = Groq(api_key=fallback_api_key)
-                return _call_groq(fallback_client, "llama-3.3-70b-versatile", reviews)
-            except Exception as e_fall:
-                logger.warning(f"Fallback key also failed on 70b: {e_fall}")
-                client = fallback_client # use this client for 8b fallback
-        
-        # Try 8b model on whichever client we ended up with
-        logger.warning("Trying fallback model (llama-3.1-8b-instant)")
-        try:
-            return _call_groq(client, "llama-3.1-8b-instant", reviews)
-        except Exception as e2:
-            logger.error(f"Fallback model also failed: {e2} — using keyword classifier")
-            return [_keyword_fallback(r) for r in reviews]
+                c = Groq(api_key=key)
+                result = _call_groq(c, model, reviews)
+                # Success! Remember this key for future batches.
+                _active_api_key = key
+                return result
+            except Exception as e:
+                err = str(e)
+                if "429" in err:
+                    logger.warning(f"Rate limit on {model} (key ...{key[-6:]}): skipping")
+                    # Don't mark model as dead yet — another key might work
+                    continue
+                else:
+                    logger.error(f"Non-rate-limit error on {model}: {e}")
+                    break  # try next model
+        # If all keys failed for this model with 429, mark it
+        _rate_limited_models.add(model)
+        logger.info(f"All keys exhausted for {model}, moving to next model")
+    
+    # All models exhausted → keyword fallback (instant, always works)
+    logger.warning("All Groq models rate-limited — using keyword classifier")
+    return [_keyword_fallback(r) for r in reviews]
 
 
 def analyze_all_reviews(reviews: list[dict], batch_size: int = 10) -> list[dict]:
@@ -158,19 +194,21 @@ def analyze_all_reviews(reviews: list[dict], batch_size: int = 10) -> list[dict]
     Process all reviews in batches of up to 10.
     Returns results in the same order as input.
     """
-    api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_FALLBACK_API_KEY")
-    if not api_key:
-        logger.warning("No GROQ_API_KEY set — using keyword fallback for all reviews")
-        return [_keyword_fallback(r) for r in reviews]
-
+    if not reviews:
+        return []
+    
     results = []
+    total_batches = (len(reviews) + batch_size - 1) // batch_size
+    
     for i in range(0, len(reviews), batch_size):
         batch = reviews[i:i + batch_size]
+        batch_num = i // batch_size + 1
         t0 = time.time()
-        # Do not pass a pre-instantiated client, allow analyze_batch to use the latest env key
-        batch_results = analyze_batch(batch, None)
+        
+        batch_results = analyze_batch(batch)
+        
         elapsed = round((time.time() - t0) * 1000)
-        logger.info(f"NLP batch {i//batch_size + 1}: {len(batch)} reviews → {elapsed}ms")
+        logger.info(f"NLP batch {batch_num}/{total_batches}: {len(batch)} reviews → {elapsed}ms")
 
         # Merge: ensure every review has a result (even if API dropped one)
         result_map = {r["review_id"]: r for r in batch_results}
