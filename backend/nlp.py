@@ -37,9 +37,8 @@ SYSTEM_PROMPT = """You are an expert product analyst. Analyze customer reviews a
 def _build_user_prompt(batch: list[dict]) -> str:
     """Build the user message for the Groq API call."""
     reviews_json = json.dumps([{"review_id": r["review_id"], "text": r.get("clean_text", r["text"])} for r in batch], indent=2)
-    aspects_list = ", ".join(CANONICAL_ASPECTS)
     return f"""Analyze these {len(batch)} customer reviews. For each review, extract:
-1. aspects: list of product features mentioned (normalize to: {aspects_list})
+1. aspects: list of specific product features mentioned (extract exactly what the user is talking about, e.g., "software", "screen_brightness", "customer_service"). Use concise 1-2 word snake_case strings.
 2. aspect_sentiment: for each aspect: {{label: positive/negative/neutral, confidence: 0.0-1.0}}
 3. emotion: anger/frustration/satisfaction/neutral
 4. sarcasm_detected: true/false
