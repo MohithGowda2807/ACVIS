@@ -90,10 +90,10 @@ def aggregate_insights(nlp_results: list[dict], db=None) -> dict:
     for asp, d in feature_data.items():
         total = d["total"] or 1
         feature_sentiment_summary[asp] = {
-            "positive_ratio": round(d["positive"] / total, 3),
-            "negative_ratio": round(d["negative"] / total, 3),
-            "neutral_ratio": round(d["neutral"] / total, 3),
-            "total_mentions": d["total"],
+            "positive": round(d["positive"] / total, 3),
+            "negative": round(d["negative"] / total, 3),
+            "neutral": round(d["neutral"] / total, 3),
+            "total": d["total"],
             "avg_confidence": round(d["confidence_sum"] / total, 3),
         }
 
@@ -119,6 +119,19 @@ def aggregate_insights(nlp_results: list[dict], db=None) -> dict:
             if causes:
                 root_cause[asp] = list(causes.values())[0]
 
+    # Convert trend_data to ratios for frontend compatibility
+    final_trend_data = {}
+    for asp, days in trend_data.items():
+        final_trend_data[asp] = {}
+        for day, stats in days.items():
+            total = stats["total"] or 1
+            final_trend_data[asp][day] = {
+                "positive": round(stats["positive"] / total, 3),
+                "negative": round(stats["negative"] / total, 3),
+                "neutral": round(stats["neutral"] / total, 3),
+                "total": stats["total"],
+            }
+
     # ─── Top Keywords ───
     kw_counter = Counter(all_keywords)
     top_keywords = [kw for kw, _ in kw_counter.most_common(10)]
@@ -126,7 +139,7 @@ def aggregate_insights(nlp_results: list[dict], db=None) -> dict:
     total_reviews = len(nlp_results) or 1
     insights = {
         "feature_sentiment_summary": feature_sentiment_summary,
-        "trend_data": {asp: dict(days) for asp, days in trend_data.items()},
+        "trend_data": final_trend_data,
         "spike_detected": spike_detected,
         "emotion_distribution": dict(emotion_dist),
         "sarcasm_rate": round(sarcasm_count / total_reviews, 4),

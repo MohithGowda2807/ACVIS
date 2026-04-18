@@ -91,7 +91,7 @@ def ingest(reviews: list[dict]) -> list[dict]:
     result = []
     for r in reviews:
         text = str(r.get("text", "")).strip()
-        if len(text.split()) < 5:
+        if len(text.split()) < 1:
             continue
         h = hashlib.md5(text.lower().encode()).hexdigest()
         if h in seen_hashes:
@@ -128,33 +128,11 @@ def _clean(text: str) -> str:
     return t
 
 
-def _detect_lang(text: str) -> str:
-    try:
-        from langdetect import detect
-        return detect(text)
-    except Exception:
-        return "en"
-
-
-def _translate(text: str, src: str) -> tuple[str, bool]:
-    try:
-        from deep_translator import GoogleTranslator
-        translated = GoogleTranslator(source=src, target="en").translate(text)
-        return translated, True
-    except Exception as e:
-        logger.warning(f"Translation failed: {e}")
-        return text, False
-
-
 def preprocess(reviews: list[dict]) -> list[dict]:
     t0 = time.time()
     result = []
     for r in reviews:
         text = r["text"]
-        lang = _detect_lang(text)
-        language_processed = True
-        if lang != "en":
-            text, language_processed = _translate(text, lang)
         clean = _clean(text)
         clean = _expand_contractions(clean)
         clean = _map_slang(clean)
@@ -162,8 +140,8 @@ def preprocess(reviews: list[dict]) -> list[dict]:
             **r,
             "original_text": r["text"],
             "clean_text": clean,
-            "language": lang,
-            "language_processed": language_processed,
+            "language": "en", # Handled natively by LLM
+            "language_processed": False,
         })
     logger.info(f"[preprocess] {len(reviews)} in → {len(result)} out | {_ms(t0)}ms")
     return result
@@ -295,8 +273,10 @@ def run_pipeline(raw_reviews: list[dict]) -> dict:
         "actions": action_list,
         # For backwards-compat with existing frontend
         "feature_sentiment": aggregated.get("feature_sentiment_summary", {}),
+        "trends": aggregated.get("trend_data", {}),
         "trend_alerts": aggregated.get("spike_detected", {}),
         "emotions": aggregated.get("emotion_distribution", {}),
+        "root_causes": aggregated.get("root_cause", {}),
         "ai_outputs": normalized,
     }
 
