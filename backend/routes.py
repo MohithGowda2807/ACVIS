@@ -221,6 +221,64 @@ def health():
     return {"status": "ok", "message": "ACVIS API is running"}
 
 
+# ─── NEW: Single-review quick analysis ───
+class SingleReview:
+    def __init__(self, text: str, rating: int | None = None, source: str = "user_input"):
+        self.text = text
+        self.rating = rating
+        self.source = source
+
+from pydantic import BaseModel as _BM
+
+class SingleReviewIn(_BM):
+    text: str
+    rating: int | None = None
+    source: str = "user_input"
+
+@router.post("/api/analyze/single")
+async def analyze_single(data: SingleReviewIn, user=Depends(get_current_user)):
+    """Quick single-review analysis — useful for live demo."""
+    try:
+        result = run_pipeline([{
+            "text": data.text,
+            "rating": data.rating,
+            "source": data.source,
+        }])
+        ai = result.get("ai_outputs", [{}])
+        first = ai[0] if ai else {}
+        return {
+            "text": data.text,
+            "aspects": first.get("aspects", []),
+            "aspect_sentiment": first.get("aspect_sentiment", {}),
+            "emotion": first.get("emotion", "neutral"),
+            "sarcasm_detected": first.get("sarcasm_detected", False),
+            "intensity": first.get("intensity", "medium"),
+            "keywords": first.get("keywords", []),
+            "insights": result.get("insights", {}),
+            "actions": result.get("actions", []),
+        }
+    except Exception as e:
+        logger.error(f"Single-review analysis error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── NEW: Per-feature trend endpoint ───
+@router.get("/api/trends/feature")
+async def get_feature_trend(feature: str = "battery", days: int = 7, user=Depends(get_current_user)):
+    """GET /api/trends/feature?feature=battery&days=7"""
+    try:
+        from database import load_insights
+        doc = load_insights()
+        if not doc:
+            return {"feature": feature, "days": days, "data": []}
+        trend = doc.get("trend_data", {}).get(feature, {})
+        sorted_days = sorted(trend.keys())[-days:]
+        result = [{"date": d, **trend[d]} for d in sorted_days]
+        return {"feature": feature, "days": days, "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ─── Tickets ───
 @router.post("/api/tickets", response_model=TicketResponse)
 async def create_ticket(ticket: TicketCreate, user=Depends(require_user)):
