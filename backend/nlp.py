@@ -121,7 +121,7 @@ def analyze_batch(reviews: list[dict], client: Optional[Groq] = None) -> list[di
     Falls back to llama-3.1-8b-instant on rate limit, then keyword fallback.
     """
     if client is None:
-        api_key = os.getenv("GROQ_API_KEY")
+        api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_FALLBACK_API_KEY")
         client = Groq(api_key=api_key)
 
     try:
@@ -141,7 +141,7 @@ def analyze_all_reviews(reviews: list[dict], batch_size: int = 10) -> list[dict]
     Process all reviews in batches of up to 10.
     Returns results in the same order as input.
     """
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_FALLBACK_API_KEY")
     client = Groq(api_key=api_key) if api_key else None
     if not client:
         logger.warning("No GROQ_API_KEY set — using keyword fallback for all reviews")
