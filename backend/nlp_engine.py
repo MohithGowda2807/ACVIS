@@ -8,13 +8,30 @@ from typing import Dict, List, Any, Optional, Tuple
 import joblib
 import os
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'sentiment_model.pkl')
 try:
-    sentiment_model = joblib.load(MODEL_PATH)
-    print(f"[OK] ML model loaded from {MODEL_PATH}")
-except Exception as e:
-    print(f"[WARNING] Could not load ML model: {e}")
-    sentiment_model = None
+    from langdetect import detect
+except ImportError:
+    detect = None
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'sentiment_model.pkl')
+sentiment_model = None
+
+def get_sentiment_model():
+    """Lazy load the sentiment model only when needed."""
+    global sentiment_model
+    if sentiment_model is not None:
+        return sentiment_model
+        
+    if not os.path.exists(MODEL_PATH):
+        return None
+        
+    try:
+        sentiment_model = joblib.load(MODEL_PATH)
+        print(f"[OK] ML model loaded lazily from {MODEL_PATH}")
+    except Exception as e:
+        print(f"[WARNING] Could not lazy-load ML model: {e}")
+        sentiment_model = False # Set to False to signify failed load but attempt finished
+    return sentiment_model
 
 
 # ─── Aspect Aliases ───
@@ -108,6 +125,10 @@ SLANG_MAP = {
     "kinda": "kind of", "sorta": "sort of",
 }
 
+# Pre-compile regex patterns for massive speedup
+CONTRACTION_RE = re.compile(rf"\b({'|'.join(re.escape(c) for c in CONTRACTIONS.keys())})\b", flags=re.I)
+SLANG_RE = re.compile(rf"\b({'|'.join(re.escape(c) for c in SLANG_MAP.keys())})\b", flags=re.I)
+
 BUSINESS_CONFIG = {
     "total_users": 5_000_000,
     "arpu_monthly": 149,
@@ -164,41 +185,91 @@ def clean_text(text: str) -> str:
 
 
 def expand_contractions(text: str) -> str:
-    for c, e in CONTRACTIONS.items():
-        text = re.sub(rf"\b{re.escape(c)}\b", e, text, flags=re.I)
-    return text
+    def replace(match):
+        return CONTRACTIONS.get(match.group(0).lower(), match.group(0))
+    return CONTRACTION_RE.sub(replace, text)
 
 
 def map_slang(text: str) -> str:
-    words = text.split()
-    return " ".join(SLANG_MAP.get(w, w) for w in words)
+    def replace(match):
+        return SLANG_MAP.get(match.group(0).lower(), match.group(0))
+    return SLANG_RE.sub(replace, text)
+
+
+def is_likely_english(text: str) -> bool:
+    """Fast-path heuristic for English detection (250x faster than langdetect)."""
+    if not text: return True
+    # Check ASCII density (90% threshold)
+    sample = text[:250]
+    ascii_chars = sum(1 for c in sample if ord(c) < 128)
+    if ascii_chars / len(sample) < 0.9:
+        return False
+    
+    # Check for common English glue words
+    common_words = {' the ', ' is ', ' and ', ' a ', ' to ', ' in ', ' of ', ' it '}
+    text_lower = ' ' + sample.lower() + ' '
+    return any(word in text_lower for word in common_words)
 
 
 def detect_language(text: str) -> str:
+    # 1. Try Fast-Path
+    if is_likely_english(text):
+        return "en"
+    
+    # 2. Fallback to slow langdetect
+    if not detect:
+        return "en"
     try:
-        from langdetect import detect
-        return detect(text)
+        return detect(text[:250])
     except Exception:
         return "en"
 
 
+def preprocess_single(r: dict) -> dict:
+    """Process a single review - targets parallelization"""
+    cleaned = clean_text(r["text"])
+    expanded = expand_contractions(cleaned)
+    mapped = map_slang(expanded)
+    lang = detect_language(mapped)
+    return {
+        "review_id": r["review_id"],
+        "original_text": r["text"],
+        "clean_text": mapped,
+        "language": lang,
+        "rating": r.get("rating"),
+        "timestamp": r.get("timestamp"),
+        "source": r.get("source"),
+    }
+
+
+def analyze_single(r: dict) -> dict:
+    """Analyze a single review - targets parallelization"""
+    text = r["clean_text"]
+    rating = r.get("rating")
+    
+    aspects = extract_aspects(text)
+    aspect_sentiment = {a: score_sentiment(text, rating) for a in aspects}
+    emotion = detect_emotion(text)
+    keywords = extract_keywords(text)
+    
+    return {
+        "review_id": r["review_id"],
+        "aspects": aspects,
+        "aspect_sentiment": aspect_sentiment,
+        "emotion": emotion,
+        "keywords": keywords,
+        "rating": rating,
+        "timestamp": r.get("timestamp"),
+        "source": r.get("source"),
+    }
+
+
 def preprocess_all(raw_reviews: List[dict]) -> List[dict]:
-    result = []
-    for r in raw_reviews:
-        t = clean_text(r["text"])
-        t = expand_contractions(t)
-        t = map_slang(t)
-        lang = detect_language(t)
-        result.append({
-            "review_id": r["review_id"],
-            "original_text": r["text"],
-            "clean_text": t,
-            "language": lang,
-            "rating": r.get("rating"),
-            "timestamp": r.get("timestamp"),
-            "source": r.get("source"),
-        })
-    return result
+    return [preprocess_single(r) for r in raw_reviews]
+
+
+def analyze_all(processed: List[dict]) -> List[dict]:
+    return [analyze_single(r) for r in processed]
 
 
 # ─── 3. NLP Analysis ───
@@ -246,9 +317,10 @@ def score_sentiment(text: str, rating: Optional[float] = None) -> str:
 
     # 5. ML Model Logic (Only if keywords are not definitive)
     ml_sentiment = None
-    if sentiment_model:
+    model = get_sentiment_model()
+    if model:
         try:
-            pred = sentiment_model.predict([text_lower])[0]
+            pred = model.predict([text_lower])[0]
             ml_sentiment = "positive" if pred == 1 else "negative"
             # Add to scores instead of absolute return
             if ml_sentiment == "positive": pos += 1

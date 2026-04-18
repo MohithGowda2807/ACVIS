@@ -151,8 +151,6 @@ class InMemoryDB:
 
 
 # ─── Connect to real MongoDB or fall back to in-memory ───
-USE_MONGO = False
-
 if MONGO_URI:
     try:
         client = MongoClient(
@@ -164,16 +162,14 @@ if MONGO_URI:
             retryReads=True,
             maxPoolSize=10,
         )
-        client.admin.command("ping")
-        print("[OK] MongoDB connected!")
+        # We don't ping here anymore, it's done in ensure_db_setup()
         USE_MONGO = True
         db = client["acvis"]
+        print("[OK] MongoDB client initialized (lazy connection)")
     except Exception as e:
-        print(f"[WARNING] MongoDB connection failed: {e}")
-        print("[INFO] Falling back to in-memory storage")
+        print(f"[WARNING] MongoDB initialization failed: {e}")
         db = InMemoryDB()
 else:
-    print("[INFO] MONGO_URI not set — using in-memory storage (data is not persisted)")
     db = InMemoryDB()
 
 # Collections
@@ -185,18 +181,39 @@ actions_col = db["actions"]
 users = db["users"]
 tickets = db["tickets"]
 
-# Indexes (no-op for in-memory, lazy for Mongo)
-try:
-    raw_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
-    processed_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
-    ai_outputs.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
-    users.create_index([("email", ASCENDING)], unique=True)
-    tickets.create_index([("ticket_id", ASCENDING)], unique=True)
-    tickets.create_index([("user_email", ASCENDING)])
-except Exception as e:
-    print(f"[WARNING] Index creation deferred: {e}")
+_db_initialized = False
+
+def ensure_db_setup():
+    """Run one-time setup (ping and indexes). Only runs once per process."""
+    global _db_initialized
+    if _db_initialized:
+        return
+    
+    if USE_MONGO:
+        try:
+            client.admin.command("ping")
+            print("[OK] MongoDB ping successful")
+        except Exception as e:
+            print(f"[WARNING] Lazy ping failed: {e}")
+
+    # Indexes (no-op for in-memory, lazy for Mongo)
+    try:
+        raw_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
+        processed_reviews.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
+        ai_outputs.create_index([("review_id", ASCENDING)], unique=True, sparse=True)
+        users.create_index([("email", ASCENDING)], unique=True)
+        tickets.create_index([("ticket_id", ASCENDING)], unique=True)
+        tickets.create_index([("user_email", ASCENDING)])
+    except Exception as e:
+        print(f"[WARNING] Index creation deferred: {e}")
+    
+    _db_initialized = True
 
 
 def test_connection():
-    db.command("ping")
-    print("[OK] Database connection verified!")
+    ensure_db_setup()
+    if USE_MONGO:
+        client.admin.command("ping")
+        print("[OK] Database connection verified!")
+    else:
+        print("[OK] In-memory database ready!")
