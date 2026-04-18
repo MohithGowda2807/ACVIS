@@ -197,6 +197,25 @@ tickets            = db["tickets"]
 
 _db_initialized = False
 
+def get_db():
+    return db
+
+def save_reviews(reviews: list[dict]):
+    if not reviews: return
+    try:
+        processed_reviews.bulk_write(
+            [__import__("pymongo").UpdateOne({"review_id": r["review_id"]}, {"$set": r}, upsert=True) for r in reviews]
+        )
+    except Exception as e:
+        logger.warning(f"Failed to bulk save reviews: {e}")
+
+def save_insights(insights_data: dict):
+    if not insights_data: return
+    try:
+        insights.replace_one({}, insights_data, upsert=True)
+    except Exception as e:
+        logger.warning(f"Failed to save insights: {e}")
+
 
 def ensure_db_setup():
     """Run one-time setup (ping + indexes). Only runs once per process."""
