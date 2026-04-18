@@ -20,6 +20,8 @@ def parse_cors_origins() -> list[str]:
         "http://localhost:5174",
         "http://localhost:5175",
         "http://localhost:8000",
+        "https://acvis.vercel.app",
+        "https://acvis-1.vercel.app"
     ]
     env_origins = [
         origin.strip()
