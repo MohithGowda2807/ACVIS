@@ -15,7 +15,7 @@ logger = logging.getLogger("acvis.nlp")
 # ─── Word lists for keyword fallback ───
 NEGATIVE_WORDS = [
     "terrible", "awful", "broken", "slow", "crash", "bad",
-    "horrible", "worst", "drain", "fail", "disappoint", "useless",
+    "horrible", "worst", "drain", "drains", "draining", "fail", "disappoint", "useless",
     "frustrating", "pathetic", "disgusting", "garbage", "trash",
     "poor", "defective", "damaged", "annoying", "unresponsive", "laggy"
 ]
