@@ -158,6 +158,14 @@ async def get_features(user=Depends(get_current_user)):
     return doc.get("feature_sentiment", {}) if doc else {}
 
 
+@router.get("/api/reviews")
+async def get_reviews(user=Depends(get_current_user)):
+    # Fetch all processed reviews from ai_outputs
+    from backend.database import ai_outputs
+    docs = list(ai_outputs.find({}, {"_id": 0}))
+    return docs
+
+
 @router.get("/api/alerts")
 async def get_alerts(user=Depends(get_current_user)):
     doc = actions_col.find_one({}, {"_id": 0, "alerts": 1})

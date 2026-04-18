@@ -244,12 +244,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   loadFromBackend: async () => {
     try {
-      const [insightsData, alertsData, actionsData, trendsData, revenueData] = await Promise.all([
+      const [insightsData, alertsData, actionsData, trendsData, revenueData, reviewsData] = await Promise.all([
         api.getInsights().catch(() => null),
         api.getAlerts().catch(() => []),
         api.getActions().catch(() => []),
         api.getTrends().catch(() => ({ trends: {}, trend_alerts: {} })),
         api.getRevenue().catch(() => ({})),
+        api.getReviews().catch(() => []),
       ]);
 
       // Only populate if there's actual data
@@ -274,7 +275,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           alerts: alertsData || [],
           actions: actionsData || [],
           revenueImpact: mappedRevenue,
-          rawReviews: [{ review_id: 'loaded', text: 'Loaded from backend', rating: null, timestamp: '', source: '' }],
+          rawReviews: reviewsData && reviewsData.length > 0 ? reviewsData : [{ review_id: 'loaded', text: 'Loaded from backend', rating: null, timestamp: '', source: '' }],
+          processedReviews: reviewsData || [],
+          aiOutputs: reviewsData || [],
           backendConnected: true,
           companyStats: insightsData.feature_sentiment || {},
         });
